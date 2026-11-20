@@ -15,7 +15,7 @@ class MaskedLanguageModelingLoss(nn.Module):
         self.criterion = nn.CrossEntropyLoss(ignore_index=ignore_index)
 
     def forward(self, logits: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        # Check if there are any valid masked targets in the batch
+        # If no tokens are masked in the batch, avoid 0/0 NaN
         valid_mask = targets != self.ignore_index
         if not valid_mask.any():
             return torch.tensor(0.0, device=logits.device, requires_grad=True)
@@ -53,3 +53,4 @@ class ContrastiveLoss(nn.Module):
         loss_a = self.criterion(similarity, labels)
         loss_b = self.criterion(similarity.T, labels)
         return (loss_a + loss_b) / 2.0
+
