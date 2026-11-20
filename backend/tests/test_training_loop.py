@@ -21,7 +21,7 @@ def test_code_encoder_training_and_checkpointing(tmp_path: Path):
     tokenizer.train(samples)
 
     dataset = CodeDataset(samples, queries)
-    collate = CodeCollateFn(tokenizer, max_seq_len=32, mlm_probability=0.30)
+    collate = CodeCollateFn(tokenizer, max_seq_len=32, mlm_probability=0.15)
     dataloader = DataLoader(dataset, batch_size=2, shuffle=True, collate_fn=collate)
 
     config = CodeEncoderConfig(
@@ -68,3 +68,4 @@ def test_code_encoder_training_and_checkpointing(tmp_path: Path):
     )
     new_trainer.load_checkpoint(ckpt_path)
     assert new_trainer.global_step == trainer.global_step
+
