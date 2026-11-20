@@ -2,6 +2,9 @@ from app.ml.device import get_device, get_memory_info
 from app.ml.encoder.config import CodeEncoderConfig
 from app.ml.encoder.model import CodeEncoder
 from app.ml.encoder.objectives import ContrastiveLoss, MaskedLanguageModelingLoss
+from app.ml.reranker.config import RerankerConfig
+from app.ml.reranker.model import CrossEncoderReranker
+from app.ml.reranker.objectives import PairwiseMarginRankingLoss, PointwiseBCERankingLoss
 from app.ml.tokenizer.bpe import ByteLevelBPETokenizer
 from app.ml.tokenizer.special_tokens import (
     BOS_ID,
@@ -40,4 +43,8 @@ __all__ = [
     "CodeEncoder",
     "MaskedLanguageModelingLoss",
     "ContrastiveLoss",
+    "RerankerConfig",
+    "CrossEncoderReranker",
+    "PairwiseMarginRankingLoss",
+    "PointwiseBCERankingLoss",
 ]
