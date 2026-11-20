@@ -1,0 +1,15 @@
+vocab_size: 16000
+hidden_size: 256
+num_layers: 6
+num_heads: 4
+intermediate_size: 1024
+max_sequence_length: 512
+dropout: 0.1
+batch_size: 16
+gradient_accumulation_steps: 4
+learning_rate: 2e-4
+warmup_steps: 300
+max_steps: 30000
+mixed_precision: true
+gradient_checkpointing: true
+margin: 1.0
