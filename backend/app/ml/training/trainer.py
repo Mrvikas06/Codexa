@@ -181,3 +181,4 @@ class CodeEncoderTrainer:
         self.current_epoch = checkpoint.get("current_epoch", 0)
         self.best_val_loss = checkpoint.get("best_val_loss", float("inf"))
         logger.info(f"Loaded checkpoint from {checkpoint_path} (step {self.global_step})")
+
