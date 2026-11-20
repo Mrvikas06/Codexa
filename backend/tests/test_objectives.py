@@ -25,15 +25,15 @@ def test_contrastive_loss_calculation():
     batch_size = 4
     dim = 16
 
-    queries = torch.randn(batch_size, dim, requires_grad=True)
-    codes = torch.randn(batch_size, dim, requires_grad=True)
+    q_raw = torch.randn(batch_size, dim, requires_grad=True)
+    c_raw = torch.randn(batch_size, dim, requires_grad=True)
 
-    # Normalize
-    q_norm = queries / torch.norm(queries, dim=-1, keepdim=True)
-    c_norm = codes / torch.norm(codes, dim=-1, keepdim=True)
+    queries = q_raw / torch.norm(q_raw, dim=-1, keepdim=True)
+    codes = c_raw / torch.norm(c_raw, dim=-1, keepdim=True)
 
-    loss = loss_fn(q_norm, c_norm)
+    loss = loss_fn(queries, codes)
     assert loss.item() > 0.0
     loss.backward()
-    assert queries.grad is not None
-    assert codes.grad is not None
+    assert q_raw.grad is not None
+    assert c_raw.grad is not None
+
