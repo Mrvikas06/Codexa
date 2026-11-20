@@ -1,0 +1,34 @@
+{
+  "benchmark_name": "ranking_v1",
+  "version": "1.0.0",
+  "description": "Cross-encoder ranking benchmark with queries, relevant code, and hard negatives",
+  "samples": [
+    {
+      "query": "Where is token expiration validated in the authentication service?",
+      "positive": "def is_token_expired(payload: dict) -> bool:\n    exp = payload.get('exp')\n    return exp is not None and datetime.now(timezone.utc).timestamp() > exp",
+      "negatives": [
+        "def create_token(user_id: str) -> str:\n    return jwt.encode({'sub': user_id, 'exp': 3600}, SECRET_KEY)",
+        "def verify_password(plain: str, hashed: str) -> bool:\n    return pwd_context.verify(plain, hashed)",
+        "def get_user_by_id(db: Session, user_id: str) -> User:\n    return db.query(User).filter(User.id == user_id).first()"
+      ]
+    },
+    {
+      "query": "How is database connection pooling configured?",
+      "positive": "def get_engine():\n    return create_async_engine(DATABASE_URL, pool_size=10, max_overflow=20)",
+      "negatives": [
+        "def get_session():\n    async with sessionmaker() as session:\n        yield session",
+        "def run_migrations():\n    context.configure(url=DATABASE_URL)",
+        "DATABASE_URL = 'postgresql+asyncpg://postgres:postgres@localhost/db'"
+      ]
+    },
+    {
+      "query": "Find the function that chunks code along AST boundaries",
+      "positive": "def chunk_file(file_id, repo_id, path, content, symbols):\n    for s in symbols:\n        chunk = slice_lines(content, s.start_line, s.end_line)\n        yield CodeChunk(chunk)",
+      "negatives": [
+        "def parse_python_ast(code: str) -> ParsedFile:\n    return ast.parse(code)",
+        "def extract_symbols(file_id, parsed_symbols):\n    return [Symbol(name=ps.name) for ps in parsed_symbols]",
+        "def detect_language(path: Path) -> str:\n    return EXTENSION_MAP.get(path.suffix, 'unknown')"
+      ]
+    }
+  ]
+}
