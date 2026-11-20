@@ -1,0 +1,27 @@
+{
+  "benchmark_name": "retrieval_v1",
+  "version": "1.0.0",
+  "description": "Code retrieval benchmark for CodeAtlas Model A evaluation",
+  "test_pairs": [
+    {
+      "query": "Where is user authentication validated?",
+      "code": "def validate_token(token: str) -> bool:\n    payload = decode_jwt(token)\n    return payload is not None and not is_expired(payload)"
+    },
+    {
+      "query": "How is database connection pooling configured?",
+      "code": "def get_engine():\n    return create_async_engine(DATABASE_URL, pool_size=10, max_overflow=20)"
+    },
+    {
+      "query": "Find the function that computes content hash of a chunk",
+      "code": "def compute_content_hash(content: str) -> str:\n    return hashlib.sha256(content.strip().encode('utf-8')).hexdigest()"
+    },
+    {
+      "query": "Check for path traversal attacks in user paths",
+      "code": "def sanitize_relative_path(user_path: str) -> str:\n    if '..' in user_path or user_path.startswith('/'):\n        raise ValidationError('Path traversal detected')"
+    },
+    {
+      "query": "Where are special tokens defined for the tokenizer?",
+      "code": "PAD_TOKEN = '<PAD>'\nUNK_TOKEN = '<UNK>'\nBOS_TOKEN = '<BOS>'\nEOS_TOKEN = '<EOS>'"
+    }
+  ]
+}
