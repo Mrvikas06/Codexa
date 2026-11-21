@@ -104,3 +104,4 @@ class RerankerCollateFn:
             "neg_input_ids": torch.tensor(neg_padded, dtype=torch.long),
             "neg_attention_mask": torch.tensor(neg_mask, dtype=torch.long),
         }
+
