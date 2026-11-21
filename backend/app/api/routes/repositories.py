@@ -204,6 +204,20 @@ async def get_file_detail(id: uuid.UUID, file_id: uuid.UUID, db: DBSession) -> F
         raise NotFoundError("File", file_id)
 
     symbol_responses = [SymbolResponse.model_validate(s) for s in f.symbols]
+    file_content = None
+    if not f.is_binary:
+        repo = await db.get(Repository, id)
+        if repo and repo.clone_path:
+            full_path = Path(repo.clone_path) / f.path
+            if full_path.exists():
+                try:
+                    file_content = full_path.read_text(encoding="utf-8", errors="replace")
+                except Exception:
+                    pass
+        if file_content is None and f.chunks:
+            sorted_chunks = sorted(f.chunks, key=lambda c: c.start_line)
+            file_content = "\n".join(c.content for c in sorted_chunks)
+
     return FileDetailResponse(
         id=f.id,
         repository_id=f.repository_id,
@@ -216,6 +230,7 @@ async def get_file_detail(id: uuid.UUID, file_id: uuid.UUID, db: DBSession) -> F
         is_binary=f.is_binary,
         symbols=symbol_responses,
         chunk_count=len(f.chunks),
+        content=file_content,
     )
 
 
