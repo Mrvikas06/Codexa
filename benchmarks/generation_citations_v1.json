@@ -1,0 +1,14 @@
+[
+  {
+    "id": "bench-auth-1",
+    "query": "Where is JWT verification handled?",
+    "expected_files": ["src/auth.py"],
+    "expected_symbols": ["verify_jwt"]
+  },
+  {
+    "id": "bench-db-1",
+    "query": "Where is the database session created?",
+    "expected_files": ["src/database.py"],
+    "expected_symbols": ["get_db"]
+  }
+]
