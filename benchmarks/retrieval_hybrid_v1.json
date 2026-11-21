@@ -1,0 +1,12 @@
+[
+  {
+    "query": "jwt authentication validation",
+    "relevant_symbols": ["validate_token", "decode_jwt"],
+    "relevant_files": ["src/auth.py", "src/security.py"]
+  },
+  {
+    "query": "database connection pool",
+    "relevant_symbols": ["create_engine", "get_db_session"],
+    "relevant_files": ["src/database.py"]
+  }
+]
