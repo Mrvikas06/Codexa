@@ -77,3 +77,4 @@ class FileResponse(BaseModel):
 class FileDetailResponse(FileResponse):
     symbols: List[SymbolResponse] = Field(default_factory=list)
     chunk_count: int = 0
+    content: Optional[str] = None
