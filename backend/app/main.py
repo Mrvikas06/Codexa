@@ -7,6 +7,7 @@ from app.api import api_router
 from app.core.config import get_settings
 from app.core.exceptions import CodeAtlasError, codeatlas_exception_handler
 from app.core.logging import get_logger, setup_logging
+from app.core.middleware import SecurityAndTimingMiddleware
 
 logger = get_logger("app.main")
 
@@ -56,6 +57,7 @@ def create_app() -> FastAPI:
         allow_methods=["*"],
         allow_headers=["*"],
     )
+    app.add_middleware(SecurityAndTimingMiddleware)
 
     # Exception Handlers
     app.add_exception_handler(CodeAtlasError, codeatlas_exception_handler)
