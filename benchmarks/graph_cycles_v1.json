@@ -1,0 +1,14 @@
+[
+  {
+    "id": "cyclic-pair",
+    "description": "Two modules directly importing each other",
+    "edges": [["module_a", "module_b"], ["module_b", "module_a"]],
+    "expected_cycles_count": 1
+  },
+  {
+    "id": "dag-clean",
+    "description": "Clean layered pipeline without cycles",
+    "edges": [["api", "service"], ["service", "repo"], ["repo", "db"]],
+    "expected_cycles_count": 0
+  }
+]
