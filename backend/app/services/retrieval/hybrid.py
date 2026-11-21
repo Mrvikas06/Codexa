@@ -60,6 +60,7 @@ class HybridRetrievalPipeline:
         self.ast_retriever = ASTStructuralRetriever()
         self.graph_retriever = DependencyGraphRetriever()
         self.rrf = ReciprocalRankFusion(k=60)
+        self.repo_bm25: Dict[uuid.UUID, BM25Index] = {}
 
     async def retrieve(
         self,
@@ -77,22 +78,29 @@ class HybridRetrievalPipeline:
         expanded_q = expand_query(query)
         keywords = extract_keywords(query)
 
-        # Build in-memory BM25 index if empty
-        if not self.bm25.doc_ids:
-            chunk_stmt = select(CodeChunk.id, CodeChunk.content)
-            if repository_id:
-                chunk_stmt = chunk_stmt.join(File, CodeChunk.file_id == File.id).where(
-                    File.repository_id == repository_id
-                )
-            chunk_res = await session.execute(chunk_stmt)
-            docs = chunk_res.all()
-            self.bm25.index_documents(docs)
+        # Build in-memory BM25 index for repository
+        if repository_id is not None:
+            if repository_id not in self.repo_bm25:
+                repo_idx = BM25Index()
+                chunk_stmt = select(CodeChunk.id, CodeChunk.content).join(File, CodeChunk.file_id == File.id).where(File.repository_id == repository_id)
+                chunk_res = await session.execute(chunk_stmt)
+                docs = chunk_res.all()
+                repo_idx.index_documents(docs)
+                self.repo_bm25[repository_id] = repo_idx
+            bm25_to_use = self.repo_bm25[repository_id]
+        else:
+            if not self.bm25.doc_ids:
+                chunk_stmt = select(CodeChunk.id, CodeChunk.content)
+                chunk_res = await session.execute(chunk_stmt)
+                docs = chunk_res.all()
+                self.bm25.index_documents(docs)
+            bm25_to_use = self.bm25
 
         # 1. Run all 5 retrieval subsystems independently
         ranked_lists: Dict[str, List[Tuple[uuid.UUID, float]]] = {}
 
         # Subsystem 1: BM25 Lexical Retrieval
-        bm25_results = self.bm25.search(expanded_q, top_k=candidate_pool_size)
+        bm25_results = bm25_to_use.search(expanded_q, top_k=candidate_pool_size)
         ranked_lists["bm25"] = bm25_results
 
         # Subsystem 2: Dense Vector Retrieval (Model A)
