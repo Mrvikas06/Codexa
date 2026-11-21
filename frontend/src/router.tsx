@@ -1,21 +1,18 @@
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
 import { Dashboard } from "@/pages/Dashboard";
-import {
-  RepositoriesPage,
-  SearchPage,
-  ChatPage,
-  GraphPage,
-  ArchitecturePage,
-  DependenciesPage,
-  IssuesPage,
-  ModelsPage,
-  TrainingPage,
-  EvaluationPage,
-  DatasetsPage,
-  ActivityPage,
-  SettingsPage,
-} from "@/pages/Placeholder";
+import { RepositoriesPage } from "@/pages/RepositoriesPage";
+import { SearchPage } from "@/pages/SearchPage";
+import { ChatPage } from "@/pages/ChatPage";
+import { GraphPage } from "@/pages/GraphPage";
+import { ArchitecturePage } from "@/pages/ArchitecturePage";
+import { ModelsPage } from "@/pages/ModelsPage";
+import { TrainingPage } from "@/pages/TrainingPage";
+import { EvaluationPage } from "@/pages/EvaluationPage";
+import { DatasetsPage } from "@/pages/DatasetsPage";
+import { ActivityPage } from "@/pages/ActivityPage";
+import { SettingsPage } from "@/pages/SettingsPage";
+import { DependenciesPage, IssuesPage } from "@/pages/Placeholder";
 
 export const router = createBrowserRouter([
   {
