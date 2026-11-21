@@ -299,6 +299,22 @@ codexa/
 
 ---
 
+## Engineering Implementation Phases
+
+All 9 development phases are 100% completed, hardened, and verified with test coverage:
+
+- **Phase 0 — Foundation**: Core scaffolding, PostgreSQL + pgvector schemas, Alembic migrations, health checks, React 18 + Vite shell.
+- **Phase 1 — Ingestion Pipeline**: Path traversal sandboxing, `.gitignore` engine, AST parsing, symbol hierarchy, semantic chunker.
+- **Phase 2 — Tokenizer & Code Encoder**: Byte-Level BPE (16k vocab), custom Transformer Encoder (6L/4H/256D), RoPE, MLM & InfoNCE contrastive training.
+- **Phase 3 — Cross-Encoder Neural Reranker**: Hard-negative miner, cross-encoder ranking, Pairwise Margin & Pointwise BCE objectives, evaluation harness.
+- **Phase 4 — Hybrid Retrieval Engine**: BM25, dense vector, symbol search, AST query, graph ego-retrieval, Reciprocal Rank Fusion ($k=60$).
+- **Phase 5 — Decoder & Generation Pipeline**: Causal Decoder LM (RMSNorm, SwiGLU, RoPE), EvidenceContextAssembler, CitationValidator, structured answer generator.
+- **Phase 6 — Graph Intelligence**: DFS cycle detector, blast radius impact analyzer, architecture hotspot / dead code detector, Graphviz DOT exporter.
+- **Phase 7 — Frontend Application**: 3-column Repository Explorer, investigation workspace AI chat, hybrid search preview, visual graph explorer, ML training & evaluation dashboards.
+- **Phase 8 — Final Evaluation & Production Polish**: Microsecond latency profiler, SQL/traversal query sanitization, evaluation API, rate limiting, security headers, production Docker setup.
+
+---
+
 ## Limitations
 
 - Models are trained from scratch on indexed repository data. They are not equivalent to commercial LLMs in general reasoning capability.
