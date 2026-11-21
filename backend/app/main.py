@@ -32,6 +32,17 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     except Exception as e:
         logger.error(f"Hardware detection error: {e}")
 
+    # Initialize DB schema on startup
+    try:
+        from app.core.database import get_engine
+        from app.models import Base
+        engine = get_engine()
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database schema initialized")
+    except Exception as e:
+        logger.warning(f"Database schema auto-init skipped or failed: {e}")
+
     yield
 
     logger.info(f"Shutting down {settings.APP_NAME}")
