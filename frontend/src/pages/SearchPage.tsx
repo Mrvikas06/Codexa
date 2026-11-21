@@ -25,8 +25,8 @@ interface SearchHit {
 
 interface SearchResponse {
   query: string;
-  total_hits: number;
-  hits: SearchHit[];
+  total_results: number;
+  results: SearchHit[];
 }
 
 export const SearchPage: React.FC = () => {
@@ -66,7 +66,7 @@ export const SearchPage: React.FC = () => {
     searchMutation.mutate();
   };
 
-  const results = searchMutation.data?.hits || [];
+  const results = searchMutation.data?.results || [];
 
   return (
     <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#0B0D10] text-[#F1F3F5] overflow-hidden">
