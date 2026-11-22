@@ -44,10 +44,17 @@
   }
 
   body {
-    @apply bg-codexa-bg text-codexa-text font-sans antialiased selection:bg-codexa-violet-light selection:text-codexa-indigo;
+    background-color: var(--color-bg);
+    color: var(--color-text);
+    font-family: Inter, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: var(--color-violet-light);
+    color: var(--color-indigo);
   }
 
   /* Accessible focus indicators */
