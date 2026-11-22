@@ -44,38 +44,41 @@ export const TrainingPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#0B0D10] text-[#F1F3F5] overflow-auto p-6 space-y-6">
-      <div className="border-b border-[#262B33] pb-4 space-y-1">
-        <h1 className="text-lg font-semibold tracking-tight flex items-center space-x-2">
-          <Terminal className="w-5 h-5 text-[#6C8CFF]" />
-          <span>Neural Training Runs & Checkpoints</span>
-        </h1>
-        <p className="text-xs text-[#A0A7B2]">
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-atlas-bg text-atlas-text overflow-y-auto p-8 space-y-6 max-w-7xl mx-auto">
+      <div className="border-b border-atlas-border pb-5">
+        <div className="flex items-center gap-2 mb-1">
+          <h1 className="text-2xl font-bold tracking-tight text-atlas-text flex items-center gap-2">
+            <Terminal className="w-6 h-6 text-atlas-accent" />
+            <span>Neural Training Runs & Checkpoints</span>
+          </h1>
+          <Badge variant="accent" size="sm">CHECKPOINTS ACTIVE</Badge>
+        </div>
+        <p className="text-xs text-atlas-text-secondary">
           Monitor PyTorch training loops, loss convergence, AdamW parameters, and hardware telemetry.
         </p>
       </div>
 
       <div className="space-y-4">
         {trainingRuns.map((run) => (
-          <Card key={run.id} className="space-y-3 font-mono text-xs">
+          <Card key={run.id} className="p-5 space-y-3 font-mono text-xs">
             <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-2">
-                <span className="font-semibold text-sm text-[#F1F3F5] font-sans">{run.model}</span>
-                <span className="text-[10px] text-[#69717D]">[{run.id}]</span>
+              <div className="flex items-center gap-2">
+                <span className="font-bold text-sm text-atlas-text font-sans">{run.model}</span>
+                <span className="text-[10px] text-atlas-text-muted">[{run.id}]</span>
               </div>
-              <Badge variant="success">{run.status}</Badge>
+              <Badge variant="success" size="sm" dot>{run.status}</Badge>
             </div>
 
-            <div className="grid grid-cols-4 gap-3 p-3 bg-[#0E1014] rounded-lg border border-[#262B33] text-[11px] text-[#A0A7B2]">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 p-3 bg-atlas-surface-secondary rounded-lg border border-atlas-border text-[11px] text-atlas-text-muted">
               <div>Final Loss: <span className="text-emerald-400 font-bold">{run.loss}</span></div>
-              <div>Epochs: <span className="text-[#F1F3F5]">{run.epochs}</span></div>
-              <div>Device: <span className="text-[#6C8CFF]">{run.device}</span></div>
-              <div>Duration: <span className="text-[#F1F3F5]">{run.duration}</span></div>
+              <div>Epochs: <span className="text-atlas-text font-semibold">{run.epochs}</span></div>
+              <div>Device: <span className="text-atlas-accent">{run.device}</span></div>
+              <div>Duration: <span className="text-atlas-text font-semibold">{run.duration}</span></div>
             </div>
 
-            <div className="text-[10px] text-[#69717D] flex items-center justify-between font-sans">
+            <div className="text-[11px] text-atlas-text-muted flex items-center justify-between font-sans pt-1">
               <span>{run.optimizer} · {run.schedule}</span>
-              <span>Dataset: {run.dataset}</span>
+              <span className="font-mono text-[10px]">Dataset: {run.dataset}</span>
             </div>
           </Card>
         ))}
