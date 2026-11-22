@@ -1,7 +1,11 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Layers, Flame, AlertOctagon, Ghost } from "lucide-react";
+import { Layers, Flame, Ghost, ExternalLink, Box } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { apiGet } from "@/lib/api";
+import { useRepositoryStore } from "@/stores/repository";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 
 interface Repository {
   id: string;
@@ -35,7 +39,8 @@ interface ArchitectureData {
 }
 
 export const ArchitecturePage: React.FC = () => {
-  const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { selectedRepoId, setSelectedRepo } = useRepositoryStore();
 
   const { data: repos = [] } = useQuery<Repository[]>({
     queryKey: ["repositories"],
@@ -44,9 +49,9 @@ export const ArchitecturePage: React.FC = () => {
 
   useEffect(() => {
     if (repos.length > 0 && !selectedRepoId && repos[0]) {
-      setSelectedRepoId(repos[0].id);
+      setSelectedRepo(repos[0].id, repos[0].name);
     }
-  }, [repos, selectedRepoId]);
+  }, [repos, selectedRepoId, setSelectedRepo]);
 
   const { data: archData } = useQuery<ArchitectureData>({
     queryKey: ["archData", selectedRepoId],
@@ -55,23 +60,29 @@ export const ArchitecturePage: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#0B0D10] text-[#F1F3F5] overflow-auto p-6 space-y-6">
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-atlas-bg text-atlas-text overflow-y-auto p-8 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-[#262B33] pb-4">
-        <div className="space-y-1">
-          <h1 className="text-lg font-semibold tracking-tight flex items-center space-x-2">
-            <Layers className="w-5 h-5 text-[#6C8CFF]" />
-            <span>Architecture & Coupling Analysis</span>
-          </h1>
-          <p className="text-xs text-[#A0A7B2]">
-            Topological analysis of structural bottlenecks, high-fan-in hotspots, and dead code candidates.
+      <div className="flex items-center justify-between border-b border-atlas-border pb-5">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight text-atlas-text flex items-center gap-2">
+              <Layers className="w-6 h-6 text-atlas-accent" />
+              <span>Architecture & Coupling Analysis</span>
+            </h1>
+            <Badge variant="accent" size="sm">GRAPH INTELLIGENCE</Badge>
+          </div>
+          <p className="text-xs text-atlas-text-secondary">
+            Topological structural bottlenecks, fan-in/fan-out coupling hotspots, and dead code candidates.
           </p>
         </div>
 
         <select
           value={selectedRepoId || ""}
-          onChange={(e) => setSelectedRepoId(e.target.value)}
-          className="bg-[#14171C] border border-[#262B33] text-xs text-[#F1F3F5] rounded px-3 py-1.5 focus:outline-none focus:border-[#6C8CFF]"
+          onChange={(e) => {
+            const r = repos.find((repo) => repo.id === e.target.value);
+            setSelectedRepo(e.target.value, r?.name);
+          }}
+          className="bg-atlas-surface border border-atlas-border text-xs text-atlas-text rounded-md px-3 py-1.5 font-mono focus:outline-none focus:border-atlas-accent cursor-pointer"
         >
           {repos.map((r) => (
             <option key={r.id} value={r.id}>
@@ -82,121 +93,153 @@ export const ArchitecturePage: React.FC = () => {
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="p-4 bg-[#14171C] border border-[#262B33] rounded-xl space-y-1">
-          <div className="text-xs text-[#69717D] uppercase font-mono">Total Nodes</div>
-          <div className="text-2xl font-bold font-mono text-[#F1F3F5]">{archData?.total_nodes || 0}</div>
-        </div>
-        <div className="p-4 bg-[#14171C] border border-[#262B33] rounded-xl space-y-1">
-          <div className="text-xs text-[#69717D] uppercase font-mono">Total Edges</div>
-          <div className="text-2xl font-bold font-mono text-[#6C8CFF]">{archData?.total_edges || 0}</div>
-        </div>
-        <div className="p-4 bg-[#14171C] border border-[#262B33] rounded-xl space-y-1">
-          <div className="text-xs text-[#69717D] uppercase font-mono">Graph Density</div>
-          <div className="text-2xl font-bold font-mono text-emerald-400">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card variant="metric">
+          <div className="text-[11px] text-atlas-text-muted uppercase font-mono mb-1">Total AST Nodes</div>
+          <div className="text-3xl font-bold font-mono text-atlas-text">{archData?.total_nodes || 0}</div>
+          <div className="text-[11px] text-atlas-text-secondary font-mono mt-2">Classes, functions & modules</div>
+        </Card>
+
+        <Card variant="metric">
+          <div className="text-[11px] text-atlas-text-muted uppercase font-mono mb-1">Dependency Edges</div>
+          <div className="text-3xl font-bold font-mono text-atlas-accent">{archData?.total_edges || 0}</div>
+          <div className="text-[11px] text-atlas-text-secondary font-mono mt-2">Explicit function calls & imports</div>
+        </Card>
+
+        <Card variant="metric">
+          <div className="text-[11px] text-atlas-text-muted uppercase font-mono mb-1">Graph Density</div>
+          <div className="text-3xl font-bold font-mono text-emerald-400">
             {((archData?.density || 0) * 100).toFixed(2)}%
           </div>
-        </div>
+          <div className="text-[11px] text-atlas-text-secondary font-mono mt-2">Coupling ratio: E / (V * (V-1))</div>
+        </Card>
       </div>
 
-      {/* Hotspots Section */}
-      <div className="grid grid-cols-2 gap-6">
+      {/* Hotspots Section (Fan-in vs Fan-out) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Fan-in Hotspots */}
-        <div className="p-5 bg-[#14171C] border border-[#262B33] rounded-xl space-y-3">
-          <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-[#F1F3F5]">
-            <Flame className="w-4 h-4 text-rose-400" />
-            <span>High Fan-In Hotspots (Core Utilities)</span>
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-atlas-border pb-3">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-atlas-text">
+              <Flame className="w-4 h-4 text-rose-400" />
+              <span>High Fan-In Hotspots (Core Utilities)</span>
+            </div>
+            <Badge variant="danger" size="sm">High Ripple Risk</Badge>
           </div>
-          <p className="text-xs text-[#A0A7B2]">
-            Symbols and modules with the highest number of incoming dependents. Breaking changes here have the highest ripple effect.
+          <p className="text-xs text-atlas-text-secondary leading-relaxed">
+            Symbols with the highest number of callers. Breaking changes here have the largest blast radius across the system.
           </p>
 
-          <div className="space-y-2 pt-2">
+          <div className="space-y-2 pt-1 font-mono text-xs">
             {!archData || archData.hotspots_fan_in.length === 0 ? (
-              <div className="text-xs text-[#69717D] italic">No high fan-in hotspots identified</div>
+              <div className="text-xs text-atlas-text-muted italic py-6 text-center">
+                No high fan-in hotspots identified.
+              </div>
             ) : (
               archData.hotspots_fan_in.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3 bg-[#0E1014] border border-[#262B33] rounded-lg flex items-center justify-between text-xs font-mono"
+                  className="p-3 rounded-lg bg-atlas-surface-secondary border border-atlas-border hover:border-atlas-border-strong flex items-center justify-between transition-colors"
                 >
-                  <div className="space-y-0.5 truncate">
-                    <div className="font-semibold text-[#6C8CFF]">{item.label}</div>
-                    <div className="text-[10px] text-[#69717D] truncate">{item.file}</div>
+                  <div className="min-w-0 flex-1 pr-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-rose-400 truncate">{item.label}</span>
+                      <Badge variant="outline" size="sm">{item.type}</Badge>
+                    </div>
+                    <div className="text-[11px] text-atlas-text-muted truncate mt-0.5">{item.file}</div>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-[#191D23] border border-[#262B33] text-rose-400 font-bold shrink-0">
-                    Fan-in: {item.fan_in}
-                  </span>
+                  <Badge variant="danger" size="sm">{item.fan_in} Callers</Badge>
                 </div>
               ))
             )}
           </div>
-        </div>
+        </Card>
 
         {/* Fan-out Hotspots */}
-        <div className="p-5 bg-[#14171C] border border-[#262B33] rounded-xl space-y-3">
-          <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-[#F1F3F5]">
-            <AlertOctagon className="w-4 h-4 text-amber-400" />
-            <span>High Fan-Out Hotspots (Coordinators)</span>
+        <Card className="p-5 space-y-4">
+          <div className="flex items-center justify-between border-b border-atlas-border pb-3">
+            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-atlas-text">
+              <Box className="w-4 h-4 text-amber-400" />
+              <span>High Fan-Out Hotspots (Orchestrators)</span>
+            </div>
+            <Badge variant="warning" size="sm">High Complexity</Badge>
           </div>
-          <p className="text-xs text-[#A0A7B2]">
-            Symbols with the highest outgoing dependencies. Often indicate coordinator modules, orchestrators, or God objects.
+          <p className="text-xs text-atlas-text-secondary leading-relaxed">
+            Symbols that orchestrate and call many distinct dependencies. High fan-out modules are often coordination bottlenecks.
           </p>
 
-          <div className="space-y-2 pt-2">
+          <div className="space-y-2 pt-1 font-mono text-xs">
             {!archData || archData.hotspots_fan_out.length === 0 ? (
-              <div className="text-xs text-[#69717D] italic">No high fan-out hotspots identified</div>
+              <div className="text-xs text-atlas-text-muted italic py-6 text-center">
+                No high fan-out hotspots identified.
+              </div>
             ) : (
               archData.hotspots_fan_out.map((item) => (
                 <div
                   key={item.id}
-                  className="p-3 bg-[#0E1014] border border-[#262B33] rounded-lg flex items-center justify-between text-xs font-mono"
+                  className="p-3 rounded-lg bg-atlas-surface-secondary border border-atlas-border hover:border-atlas-border-strong flex items-center justify-between transition-colors"
                 >
-                  <div className="space-y-0.5 truncate">
-                    <div className="font-semibold text-amber-400">{item.label}</div>
-                    <div className="text-[10px] text-[#69717D] truncate">{item.file}</div>
+                  <div className="min-w-0 flex-1 pr-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-amber-400 truncate">{item.label}</span>
+                      <Badge variant="outline" size="sm">{item.type}</Badge>
+                    </div>
+                    <div className="text-[11px] text-atlas-text-muted truncate mt-0.5">{item.file}</div>
                   </div>
-                  <span className="px-2 py-0.5 rounded bg-[#191D23] border border-[#262B33] text-amber-400 font-bold shrink-0">
-                    Fan-out: {item.fan_out}
-                  </span>
+                  <Badge variant="warning" size="sm">{item.fan_out} Calls</Badge>
                 </div>
               ))
             )}
           </div>
-        </div>
+        </Card>
       </div>
 
       {/* Dead Code Candidates */}
-      <div className="p-5 bg-[#14171C] border border-[#262B33] rounded-xl space-y-3">
-        <div className="flex items-center space-x-2 text-xs font-semibold uppercase tracking-wider text-[#F1F3F5]">
-          <Ghost className="w-4 h-4 text-[#A0A7B2]" />
-          <span>Unreferenced Symbol Candidates (Zero Fan-In)</span>
+      <Card className="p-5 space-y-4">
+        <div className="flex items-center justify-between border-b border-atlas-border pb-3">
+          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-atlas-text">
+            <Ghost className="w-4 h-4 text-atlas-accent" />
+            <span>Dead Code Candidates (Unreferenced Symbols)</span>
+          </div>
+          <Badge variant="accent" size="sm">
+            {archData?.dead_code_candidates.length || 0} Candidates
+          </Badge>
         </div>
-        <p className="text-xs text-[#A0A7B2]">
-          Functions and classes with zero internal callers across the indexed repository. Potential candidates for dead code elimination or public API entrypoints.
+        <p className="text-xs text-atlas-text-secondary leading-relaxed">
+          Functions or classes with zero incoming static references across the indexed repository AST.
+          Verify before deprecating or pruning.
         </p>
 
-        <div className="grid grid-cols-2 gap-3 pt-2 font-mono text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 font-mono text-xs pt-1">
           {!archData || archData.dead_code_candidates.length === 0 ? (
-            <div className="text-xs text-[#69717D] italic col-span-2">No unreferenced symbols detected</div>
+            <div className="col-span-3 text-xs text-emerald-400 italic py-6 text-center">
+              ✓ No dead code candidates detected.
+            </div>
           ) : (
             archData.dead_code_candidates.map((item) => (
               <div
                 key={item.id}
-                className="p-3 bg-[#0E1014] border border-[#262B33] rounded-lg space-y-0.5"
+                className="p-3 rounded-lg bg-atlas-surface-secondary border border-atlas-border hover:border-atlas-border-strong space-y-1 transition-colors"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-semibold text-[#F1F3F5]">{item.label}</span>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded bg-[#191D23] border border-[#262B33] text-[#A0A7B2] uppercase">
-                    {item.type}
-                  </span>
+                  <span className="font-semibold text-atlas-text truncate">{item.label}</span>
+                  <Badge variant="outline" size="sm">{item.type}</Badge>
                 </div>
-                <div className="text-[10px] text-[#69717D] truncate">{item.file}</div>
+                <div className="text-[11px] text-atlas-text-muted truncate">{item.file}</div>
+                <div className="pt-2 flex justify-end">
+                  <button
+                    onClick={() => navigate("/repositories")}
+                    className="text-[10px] text-atlas-accent hover:underline flex items-center gap-1 font-sans"
+                  >
+                    Inspect in Repo
+                    <ExternalLink className="w-3 h-3" />
+                  </button>
+                </div>
               </div>
             ))
           )}
         </div>
-      </div>
+      </Card>
     </div>
   );
 };
