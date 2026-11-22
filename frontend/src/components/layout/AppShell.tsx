@@ -170,7 +170,7 @@ export function AppShell() {
 
             {/* User Profile Avatar */}
             <div className="w-8 h-8 rounded-full bg-codexa-violet-light border border-codexa-violet-soft/40 flex items-center justify-center text-codexa-indigo font-bold text-xs select-none">
-              S
+              V
             </div>
           </div>
         </header>

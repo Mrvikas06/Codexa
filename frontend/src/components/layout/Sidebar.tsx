@@ -189,16 +189,16 @@ export function Sidebar() {
         >
           <div className="relative shrink-0">
             <div className="w-8 h-8 rounded-full bg-codexa-violet-light flex items-center justify-center text-codexa-indigo font-bold text-xs">
-              S
+              V
             </div>
             <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
               <p className="text-xs font-semibold text-codexa-text truncate">
-                Shaurya
+                Vikas
               </p>
-              <p className="text-[11px] text-codexa-text-muted truncate">Active Engineer</p>
+              <p className="text-[11px] text-codexa-text-muted truncate">Lead Architect</p>
             </div>
           )}
         </div>
