@@ -59,12 +59,35 @@ export const ArchitecturePage: React.FC = () => {
     enabled: !!selectedRepoId,
   });
 
-  const techStack = [
-    { name: "FastAPI", color: "bg-emerald-500", desc: "API Gateway" },
-    { name: "PyTorch", color: "bg-amber-500", desc: "Neural Engine" },
-    { name: "PostgreSQL", color: "bg-blue-500", desc: "Relational DB" },
-    { name: "Docker", color: "bg-sky-500", desc: "Containerization" },
-  ];
+  const { data: files = [] } = useQuery<{ path: string }[]>({
+    queryKey: ["repoFiles", selectedRepoId],
+    queryFn: () => apiGet<{ path: string }[]>(`/api/v1/repositories/${selectedRepoId}/files`),
+    enabled: !!selectedRepoId,
+  });
+
+  const techStack = React.useMemo(() => {
+    const list = [];
+    const paths = files.map((f) => f.path.toLowerCase());
+    if (paths.some((p) => p.endsWith(".py"))) {
+      list.push({ name: "Python 3.11", color: "bg-emerald-500", desc: "Core Runtime" });
+    }
+    if (paths.some((p) => p.includes("docker") || p.includes("dockerfile"))) {
+      list.push({ name: "Docker", color: "bg-sky-500", desc: "Containerization" });
+    }
+    if (paths.some((p) => p.includes("train") || p.includes("model"))) {
+      list.push({ name: "Machine Learning", color: "bg-amber-500", desc: "Training Pipeline" });
+    }
+    if (paths.some((p) => p.includes("app.py") || p.includes("streamlit"))) {
+      list.push({ name: "Web Application", color: "bg-blue-500", desc: "Interactive Frontend" });
+    }
+    if (list.length === 0) {
+      list.push(
+        { name: "FastAPI", color: "bg-emerald-500", desc: "API Gateway" },
+        { name: "PyTorch", color: "bg-amber-500", desc: "Neural Engine" }
+      );
+    }
+    return list;
+  }, [files]);
 
   return (
     <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-[#F7F8FC] text-neutral-900 overflow-y-auto">

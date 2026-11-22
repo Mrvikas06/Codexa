@@ -78,3 +78,26 @@ class FileDetailResponse(FileResponse):
     symbols: List[SymbolResponse] = Field(default_factory=list)
     chunk_count: int = 0
     content: Optional[str] = None
+
+
+class DependencyItemResponse(BaseModel):
+    id: str
+    package: str
+    version: str
+    type: str
+    usage: str
+    status: str
+
+
+class IssueItemResponse(BaseModel):
+    id: str
+    title: str
+    severity: str
+    category: str
+    file: str
+    line: int
+    description: str
+    suggestedFix: str
+    confidence: str
+    reviewed: bool = False
+

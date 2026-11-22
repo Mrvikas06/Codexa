@@ -2,6 +2,8 @@ import React, { useState } from "react";
 import { Terminal, Play, TrendingDown } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
 
 interface TrainingRun {
   id: string;
@@ -14,8 +16,13 @@ interface TrainingRun {
 
 export const TrainingPage: React.FC = () => {
   const [selectedRunId, setSelectedRunId] = useState<string>("#TR-041");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newModel, setNewModel] = useState("Encoder");
+  const [newEpochs, setNewEpochs] = useState("20");
+  const [newLr, setNewLr] = useState("5e-4");
+  const [isLaunching, setIsLaunching] = useState(false);
 
-  const trainingRuns: TrainingRun[] = [
+  const [runs, setRuns] = useState<TrainingRun[]>([
     {
       id: "#TR-042",
       model: "Encoder",
@@ -40,7 +47,27 @@ export const TrainingPage: React.FC = () => {
       loss: "1.042",
       started: "1 day ago",
     },
-  ];
+  ]);
+
+  const handleLaunch = (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLaunching(true);
+    setTimeout(() => {
+      const nextId = `#TR-04${runs.length + 1}`;
+      const newJob: TrainingRun = {
+        id: nextId,
+        model: newModel,
+        status: "Running",
+        epoch: `1/${newEpochs}`,
+        loss: "1.240",
+        started: "Just now",
+      };
+      setRuns([newJob, ...runs]);
+      setSelectedRunId(nextId);
+      setIsLaunching(false);
+      setIsModalOpen(false);
+    }, 800);
+  };
 
   // Loss data points for #TR-041 (Epoch 1 to 20)
   const lossPoints = [
@@ -101,7 +128,12 @@ export const TrainingPage: React.FC = () => {
           </span>
         </div>
 
-        <Button size="sm" variant="primary" leftIcon={<Play className="w-3.5 h-3.5" />}>
+        <Button
+          size="sm"
+          variant="primary"
+          leftIcon={<Play className="w-3.5 h-3.5" />}
+          onClick={() => setIsModalOpen(true)}
+        >
           New Training Job
         </Button>
       </div>
@@ -131,7 +163,7 @@ export const TrainingPage: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
-                {trainingRuns.map((run) => (
+                {runs.map((run) => (
                   <tr
                     key={run.id}
                     onClick={() => setSelectedRunId(run.id)}
@@ -271,6 +303,68 @@ export const TrainingPage: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      {/* New Training Job Modal */}
+      <Modal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        title="Configure & Launch Neural Training Run"
+      >
+        <form onSubmit={handleLaunch} className="space-y-4 pt-2">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-neutral-700">Target Model</label>
+            <select
+              value={newModel}
+              onChange={(e) => setNewModel(e.target.value)}
+              className="w-full px-3 py-2 text-xs bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-800 font-mono focus:outline-none focus:border-primary"
+            >
+              <option value="Encoder">Model A: Code Encoder (Contrastive InfoNCE)</option>
+              <option value="Reranker">Model B: Cross-Encoder Reranker (Margin Loss)</option>
+              <option value="Decoder">Model C: Causal Decoder (Grounding Citations)</option>
+            </select>
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <Input
+              label="Epochs"
+              type="number"
+              value={newEpochs}
+              onChange={(e) => setNewEpochs(e.target.value)}
+            />
+            <Input
+              label="Learning Rate"
+              value={newLr}
+              onChange={(e) => setNewLr(e.target.value)}
+            />
+          </div>
+
+          <div className="p-3 bg-neutral-50 rounded-lg border border-neutral-200 text-[11px] text-neutral-600 space-y-1 font-mono">
+            <div>Optimizer: AdamW (weight_decay=0.01)</div>
+            <div>Scheduler: CosineAnnealingLR with warmup</div>
+            <div>Device: PyTorch CUDA / CPU auto-selection</div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-neutral-200">
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsModalOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={isLaunching}
+              leftIcon={<Play className="w-3.5 h-3.5" />}
+            >
+              {isLaunching ? "Initializing Weights..." : "Launch Training Run"}
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

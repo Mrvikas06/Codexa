@@ -355,53 +355,73 @@ def train_model(config):
               <div className="space-y-4">
                 <div className="p-4 rounded-xl bg-codexa-bg border border-codexa-border space-y-2 text-xs">
                   <div className="text-[10px] font-mono font-bold uppercase text-codexa-primary">
-                    Module Summary
+                    File Overview
                   </div>
                   <p className="text-codexa-text-secondary leading-relaxed">
-                    Trains the code encoder model using the configured dataset, optimizer, and training loop.
+                    {activePath} ({activeContent.split("\n").length} lines, {fileDetail?.language || "python"}). Contains {functions.length} function definitions and {classes.length} class declarations.
                   </p>
                 </div>
 
                 <div className="space-y-2 text-xs font-mono">
                   <div className="text-[10px] uppercase font-bold text-codexa-text-muted">
-                    Key Exports
+                    Key Symbols
                   </div>
-                  <div className="p-2.5 rounded-lg bg-codexa-surface border border-codexa-border font-semibold text-codexa-indigo">
-                    train_model(config)
-                  </div>
+                  {functions.slice(0, 3).map((f) => (
+                    <div
+                      key={f.id}
+                      onClick={() => setHighlightedRange([f.start_line, f.end_line])}
+                      className="p-2.5 rounded-lg bg-codexa-surface border border-codexa-border font-semibold text-codexa-indigo cursor-pointer hover:bg-violet-50 transition-colors truncate"
+                    >
+                      {f.name} (L{f.start_line}-L{f.end_line})
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
 
             {activeIntelTab === "functions" && (
               <div className="space-y-2">
-                {functions.map((fn) => (
-                  <div
-                    key={fn.id}
-                    className="p-3 rounded-lg bg-codexa-bg border border-codexa-border space-y-1 font-mono text-xs hover:border-codexa-primary/40 transition-colors"
-                  >
-                    <div className="font-bold text-codexa-primary">{fn.name}</div>
-                    <div className="text-[10px] text-codexa-text-muted">
-                      Lines L{fn.start_line} – L{fn.end_line}
-                    </div>
+                {functions.length === 0 ? (
+                  <div className="text-xs text-codexa-text-muted italic py-6 text-center">
+                    No top-level functions defined in this file.
                   </div>
-                ))}
+                ) : (
+                  functions.map((fn) => (
+                    <div
+                      key={fn.id}
+                      onClick={() => setHighlightedRange([fn.start_line, fn.end_line])}
+                      className="p-3 rounded-lg bg-codexa-bg border border-codexa-border space-y-1 font-mono text-xs hover:border-codexa-primary hover:bg-violet-50/50 cursor-pointer transition-colors"
+                    >
+                      <div className="font-bold text-codexa-primary truncate">{fn.name}</div>
+                      <div className="text-[10px] text-codexa-text-muted">
+                        Lines L{fn.start_line} – L{fn.end_line}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 
             {activeIntelTab === "classes" && (
               <div className="space-y-2">
-                {classes.map((cls) => (
-                  <div
-                    key={cls.id}
-                    className="p-3 rounded-lg bg-codexa-bg border border-codexa-border space-y-1 font-mono text-xs"
-                  >
-                    <div className="font-bold text-emerald-600">{cls.name}</div>
-                    <div className="text-[10px] text-codexa-text-muted">
-                      Lines L{cls.start_line} – L{cls.end_line}
-                    </div>
+                {classes.length === 0 ? (
+                  <div className="text-xs text-codexa-text-muted italic py-6 text-center">
+                    No class definitions in this file.
                   </div>
-                ))}
+                ) : (
+                  classes.map((cls) => (
+                    <div
+                      key={cls.id}
+                      onClick={() => setHighlightedRange([cls.start_line, cls.end_line])}
+                      className="p-3 rounded-lg bg-codexa-bg border border-codexa-border space-y-1 font-mono text-xs hover:border-emerald-500 hover:bg-emerald-50/50 cursor-pointer transition-colors"
+                    >
+                      <div className="font-bold text-emerald-600 truncate">{cls.name}</div>
+                      <div className="text-[10px] text-codexa-text-muted">
+                        Lines L{cls.start_line} – L{cls.end_line}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             )}
 

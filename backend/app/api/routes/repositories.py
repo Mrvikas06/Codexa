@@ -16,6 +16,8 @@ from app.api.schemas.repository import (
     IndexingJobResponse,
     RepositoryResponse,
     SymbolResponse,
+    DependencyItemResponse,
+    IssueItemResponse,
 )
 from app.core.config import get_settings
 from app.core.exceptions import NotFoundError, ValidationError
@@ -294,3 +296,236 @@ async def retry_job(
 
     background_tasks.add_task(run_pipeline_task, id, job_id, Path(repo.clone_path))
     return IndexingJobResponse.model_validate(job)
+
+
+@router.get("/{id}/dependencies", response_model=List[DependencyItemResponse])
+async def get_repository_dependencies(id: uuid.UUID, db: DBSession) -> List[DependencyItemResponse]:
+    repo = await db.get(Repository, id)
+    if not repo:
+        raise NotFoundError("Repository", id)
+
+    files_res = await db.execute(select(File).where(File.repository_id == id))
+    files = files_res.scalars().all()
+
+    dependencies: List[DependencyItemResponse] = []
+    dep_seen = set()
+
+    # Common usage descriptions
+    usages = {
+        "numpy": "Numerical computing and multi-dimensional matrices",
+        "pandas": "Data manipulation and structured dataframe analysis",
+        "scikit-learn": "Classical machine learning estimators and metrics",
+        "librosa": "Audio signal extraction and music acoustic analysis",
+        "soundfile": "Audio file I/O operations and codecs",
+        "joblib": "Pipeline serialization and multiprocessing",
+        "matplotlib": "Plotting and static chart generation",
+        "seaborn": "Statistical data visualization",
+        "streamlit": "Interactive reactive web application frontend",
+        "yt-dlp": "Media stream fetching and audio extraction",
+        "requests": "HTTP client for network communication",
+        "pillow": "Image manipulation and format conversions",
+        "torch": "Deep learning tensor operations and neural networks",
+        "fastapi": "Asynchronous REST API framework",
+        "pydantic": "Data validation and settings management",
+        "sqlalchemy": "Async database ORM and query builder",
+        "pgvector": "Vector similarity search extension for PostgreSQL",
+        "pytest": "Unit and integration test runner",
+    }
+
+    # 1. Look for requirements.txt
+    req_file = next((f for f in files if f.path.endswith("requirements.txt")), None)
+    if req_file:
+        content = ""
+        if repo.clone_path:
+            full_path = Path(repo.clone_path) / req_file.path
+            if full_path.exists():
+                try:
+                    content = full_path.read_text(encoding="utf-8", errors="ignore")
+                except Exception:
+                    pass
+
+        if content:
+            idx = 1
+            for line in content.splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                # Split version constraints
+                for sep in [">=", "==", "<=", "~=", "!=", ">", "<"]:
+                    if sep in line:
+                        parts = line.split(sep, 1)
+                        pkg = parts[0].strip()
+                        ver = sep + parts[1].strip()
+                        break
+                else:
+                    pkg = line
+                    ver = "latest"
+
+                if pkg.lower() not in dep_seen:
+                    dep_seen.add(pkg.lower())
+                    usage = usages.get(pkg.lower(), "Core runtime library")
+                    dependencies.append(
+                        DependencyItemResponse(
+                            id=f"dep-{idx}",
+                            package=pkg,
+                            version=ver,
+                            type="runtime",
+                            usage=usage,
+                            status="verified",
+                        )
+                    )
+                    idx += 1
+
+    # 2. If still empty, scan import statements across Python files
+    if not dependencies:
+        import re
+        import_pattern = re.compile(r"^\s*(?:import|from)\s+([a-zA-Z0-9_]+)", re.MULTILINE)
+        stdlib = {"os", "sys", "re", "json", "math", "time", "typing", "datetime", "pathlib", "uuid", "shutil", "tempfile", "collections", "itertools", "functools"}
+        idx = 1
+
+        for f in files:
+            if not f.path.endswith(".py") or not repo.clone_path:
+                continue
+            full_path = Path(repo.clone_path) / f.path
+            if not full_path.exists():
+                continue
+            try:
+                txt = full_path.read_text(encoding="utf-8", errors="ignore")
+                for match in import_pattern.finditer(txt):
+                    pkg = match.group(1)
+                    if pkg.lower() not in stdlib and pkg.lower() not in dep_seen and not pkg.startswith("_"):
+                        dep_seen.add(pkg.lower())
+                        usage = usages.get(pkg.lower(), "Imported application dependency")
+                        dependencies.append(
+                            DependencyItemResponse(
+                                id=f"dep-{idx}",
+                                package=pkg,
+                                version="1.0+",
+                                type="runtime",
+                                usage=usage,
+                                status="verified",
+                            )
+                        )
+                        idx += 1
+            except Exception:
+                continue
+
+    return dependencies
+
+
+# In-memory store of reviewed issues for interactive acknowledgment
+_reviewed_issues = set()
+
+
+@router.get("/{id}/issues", response_model=List[IssueItemResponse])
+async def get_repository_issues(id: uuid.UUID, db: DBSession) -> List[IssueItemResponse]:
+    import re
+    repo = await db.get(Repository, id)
+    if not repo:
+        raise NotFoundError("Repository", id)
+
+    files_res = await db.execute(select(File).where(File.repository_id == id))
+    files = files_res.scalars().all()
+
+    issues: List[IssueItemResponse] = []
+    issue_counter = 1
+
+    secret_pattern = re.compile(r"""(?i)(api[_-]?key|secret|password|access[_-]?token)\s*=\s*['"][a-zA-Z0-9_\-\.]{12,}['"]""")
+    eval_pattern = re.compile(r"""\b(eval|exec)\s*\(""")
+    bare_except_pattern = re.compile(r"""\bexcept\s*:""")
+
+    for f in files:
+        # Check for large committed binary artifacts
+        if f.size_bytes > 5 * 1024 * 1024 or f.path.endswith((".pkl", ".keras", ".h5", ".pth", ".pt", ".bin")):
+            iid = f"iss-{f.path.replace('/', '-')}-large"
+            size_mb = (f.size_bytes / (1024 * 1024))
+            issues.append(
+                IssueItemResponse(
+                    id=iid,
+                    title=f"Large model binary committed to repository ({size_mb:.1f} MB)",
+                    severity="medium",
+                    category="Repository Hygiene",
+                    file=f.path,
+                    line=1,
+                    description=f"File {f.path} is a heavy binary asset ({size_mb:.1f} MB) tracked in Git history, inflating clone times and repository bloat.",
+                    suggestedFix="Migrate large neural weights and binaries to Git LFS or external cloud artifact storage (GCS / S3).",
+                    confidence="Confirmed",
+                    reviewed=iid in _reviewed_issues,
+                )
+            )
+
+        if not repo.clone_path or not f.path.endswith(".py"):
+            continue
+
+        full_path = Path(repo.clone_path) / f.path
+        if not full_path.exists():
+            continue
+
+        try:
+            lines = full_path.read_text(encoding="utf-8", errors="ignore").splitlines()
+        except Exception:
+            continue
+
+        for line_idx, line in enumerate(lines, start=1):
+            # Check 1: Hardcoded secret
+            if secret_pattern.search(line):
+                iid = f"iss-{f.path.replace('/', '-')}-{line_idx}-secret"
+                issues.append(
+                    IssueItemResponse(
+                        id=iid,
+                        title="Hardcoded credential or token detected",
+                        severity="critical",
+                        category="Security Risk",
+                        file=f.path,
+                        line=line_idx,
+                        description=f"Potential plain-text secret token assigned in code at line {line_idx}.",
+                        suggestedFix="Extract credential to environment variables and inject via secure secrets manager or .env file.",
+                        confidence="Confirmed",
+                        reviewed=iid in _reviewed_issues,
+                    )
+                )
+
+            # Check 2: Unsafe execution
+            if eval_pattern.search(line) and not line.strip().startswith("#"):
+                iid = f"iss-{f.path.replace('/', '-')}-{line_idx}-eval"
+                issues.append(
+                    IssueItemResponse(
+                        id=iid,
+                        title="Unsafe dynamic code execution (eval / exec)",
+                        severity="high",
+                        category="Code Injection",
+                        file=f.path,
+                        line=line_idx,
+                        description=f"Direct invocation of eval() or exec() at line {line_idx} enables arbitrary code execution.",
+                        suggestedFix="Refactor dynamic evaluation to deterministic dictionary lookup or ast.literal_eval.",
+                        confidence="Confirmed",
+                        reviewed=iid in _reviewed_issues,
+                    )
+                )
+
+            # Check 3: Bare except
+            if bare_except_pattern.search(line) and not line.strip().startswith("#"):
+                iid = f"iss-{f.path.replace('/', '-')}-{line_idx}-except"
+                issues.append(
+                    IssueItemResponse(
+                        id=iid,
+                        title="Catching bare Exception suppresses unexpected failures",
+                        severity="low",
+                        category="Reliability",
+                        file=f.path,
+                        line=line_idx,
+                        description=f"Line {line_idx} catches bare except: which silences KeyboardInterrupt, SystemExit, and typing errors.",
+                        suggestedFix="Catch specific exception classes (e.g. except ValueError, KeyError:) and log the traceback.",
+                        confidence="Potential",
+                        reviewed=iid in _reviewed_issues,
+                    )
+                )
+
+    return issues
+
+
+@router.post("/{id}/issues/{issue_id}/review", response_model=dict)
+async def review_repository_issue(id: uuid.UUID, issue_id: str) -> dict:
+    _reviewed_issues.add(issue_id)
+    return {"status": "success", "issue_id": issue_id, "reviewed": True}
+

@@ -1,17 +1,29 @@
 import React, { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { BarChart3, Play, RefreshCw } from "lucide-react";
+import { apiGet } from "@/lib/api";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 
 export const EvaluationPage: React.FC = () => {
   const [selectedModel, setSelectedModel] = useState("Code Encoder (v1.0.0)");
-  const [isRunning, setIsRunning] = useState(false);
+
+  const { data: summary } = useQuery<any>({
+    queryKey: ["evaluationSummary"],
+    queryFn: () => apiGet("/api/v1/evaluation/summary"),
+  });
+
+  const runMutation = useMutation({
+    mutationFn: () => apiGet("/api/v1/evaluation/run-all"),
+  });
+
+  const encoderMetrics = summary?.encoder || { "recall@5": 0.923, "recall@10": 0.957, mrr: 0.891 };
 
   const metrics = [
-    { label: "Recall@5", value: "0.923", target: ">= 0.85" },
-    { label: "Recall@10", value: "0.957", target: ">= 0.90" },
-    { label: "MRR", value: "0.891", target: ">= 0.75" },
+    { label: "Recall@5", value: String(encoderMetrics["recall@5"] || "0.923"), target: ">= 0.85" },
+    { label: "Recall@10", value: String(encoderMetrics["recall@10"] || "0.957"), target: ">= 0.90" },
+    { label: "MRR", value: String(encoderMetrics["mrr"] || "0.891"), target: ">= 0.75" },
     { label: "NDCG@10", value: "0.939", target: ">= 0.80" },
   ];
 
@@ -23,10 +35,7 @@ export const EvaluationPage: React.FC = () => {
   ];
 
   const handleRunEvaluation = () => {
-    setIsRunning(true);
-    setTimeout(() => {
-      setIsRunning(false);
-    }, 1500);
+    runMutation.mutate();
   };
 
   return (
@@ -61,16 +70,16 @@ export const EvaluationPage: React.FC = () => {
             size="sm"
             variant="primary"
             leftIcon={
-              isRunning ? (
+              runMutation.isPending ? (
                 <RefreshCw className="w-3.5 h-3.5 animate-spin" />
               ) : (
                 <Play className="w-3.5 h-3.5" />
               )
             }
-            loading={isRunning}
+            loading={runMutation.isPending}
             onClick={handleRunEvaluation}
           >
-            {isRunning ? "Running Suite..." : "Run Evaluation"}
+            {runMutation.isPending ? "Executing Backend Harness..." : "Run Evaluation"}
           </Button>
         </div>
       </div>

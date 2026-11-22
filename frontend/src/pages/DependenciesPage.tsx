@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Network, Search, PackageCheck } from "lucide-react";
+import { Network, Search, PackageCheck, AlertCircle } from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { useRepositoryStore } from "@/stores/repository";
 import { Card } from "@/components/ui/Card";
@@ -31,72 +31,14 @@ export const DependenciesPage: React.FC = () => {
     queryFn: () => apiGet<Repository[]>("/api/v1/repositories"),
   });
 
-  const dependencies: DependencyItem[] = [
-    {
-      id: "dep-1",
-      package: "torch",
-      version: "2.2.0",
-      type: "runtime",
-      usage: "ML training, neural models & contrastive learning",
-      status: "verified",
-    },
-    {
-      id: "dep-2",
-      package: "fastapi",
-      version: "0.110.0",
-      type: "runtime",
-      usage: "Core API endpoints & async route controllers",
-      status: "clean",
-    },
-    {
-      id: "dep-3",
-      package: "pydantic",
-      version: "2.6.1",
-      type: "runtime",
-      usage: "Data schemas & validation models",
-      status: "verified",
-    },
-    {
-      id: "dep-4",
-      package: "numpy",
-      version: "1.26.4",
-      type: "runtime",
-      usage: "Array manipulations & embedding vector calculations",
-      status: "clean",
-    },
-    {
-      id: "dep-5",
-      package: "sqlalchemy",
-      version: "2.0.29",
-      type: "runtime",
-      usage: "Async database ORM & metadata models",
-      status: "clean",
-    },
-    {
-      id: "dep-6",
-      package: "pgvector",
-      version: "0.2.5",
-      type: "runtime",
-      usage: "PostgreSQL pgvector dense similarity retrieval",
-      status: "verified",
-    },
-    {
-      id: "dep-7",
-      package: "uvicorn",
-      version: "0.29.0",
-      type: "runtime",
-      usage: "High-performance ASGI server runtime",
-      status: "clean",
-    },
-    {
-      id: "dep-8",
-      package: "pytest",
-      version: "9.2.0",
-      type: "dev",
-      usage: "Comprehensive unit, integration, & regression test suite",
-      status: "clean",
-    },
-  ];
+  const activeRepoId = selectedRepoId || (repos.length > 0 ? repos[0]?.id : undefined);
+
+  // Fetch real dependencies from backend API
+  const { data: dependencies = [], isLoading } = useQuery<DependencyItem[]>({
+    queryKey: ["repoDependencies", activeRepoId],
+    queryFn: () => apiGet<DependencyItem[]>(`/api/v1/repositories/${activeRepoId}/dependencies`),
+    enabled: !!activeRepoId,
+  });
 
   const filteredDeps = dependencies.filter((dep) => {
     const matchesSearch =
@@ -107,136 +49,157 @@ export const DependenciesPage: React.FC = () => {
   });
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-codexa-bg text-codexa-text overflow-y-auto p-8 space-y-6 max-w-7xl mx-auto animate-fade-in">
-      {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-codexa-border pb-5">
-        <div>
-          <div className="flex items-center gap-2.5 mb-1">
-            <h1 className="text-2xl font-bold tracking-tight text-codexa-text flex items-center gap-2">
-              <Network className="w-6 h-6 text-codexa-primary" />
-              <span>Dependencies</span>
-            </h1>
-            <Badge variant="accent" size="sm">
-              {selectedRepoName || "Active Repository"}
-            </Badge>
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-[#F7F8FC] text-neutral-900 overflow-y-auto">
+      {/* Top Header */}
+      <div className="h-14 border-b border-neutral-200 bg-white px-6 flex items-center justify-between shrink-0 sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Network className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-sm text-neutral-900">Dependencies</span>
           </div>
-          <p className="text-xs text-codexa-text-secondary">
-            Extracted package manifest dependencies, runtime utilities, and usage attribution.
-          </p>
+
+          <span className="text-neutral-300">/</span>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-medium text-neutral-700">
+              {selectedRepoName || (repos.length > 0 ? repos[0]?.name : "Active Repo")}
+            </span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1 h-1 rounded-full bg-emerald-500" />
+              {dependencies.length} Detected
+            </span>
+          </div>
         </div>
 
-        {/* Repository selector */}
-        <select
-          value={selectedRepoId || ""}
-          onChange={(e) => {
-            const r = repos.find((repo) => repo.id === e.target.value);
-            setSelectedRepo(e.target.value, r?.name);
-          }}
-          className="bg-codexa-surface border border-codexa-border text-xs text-codexa-text rounded-lg px-3 py-1.5 font-mono focus:outline-none focus:border-codexa-primary cursor-pointer shadow-subtle"
-        >
-          {repos.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.name}
-            </option>
-          ))}
-        </select>
+        {repos.length > 1 && (
+          <select
+            value={selectedRepoId || ""}
+            onChange={(e) => {
+              const r = repos.find((repo) => repo.id === e.target.value);
+              setSelectedRepo(e.target.value, r?.name);
+            }}
+            className="bg-neutral-50 border border-neutral-200 text-xs text-neutral-700 rounded-lg px-3 py-1.5 font-mono focus:outline-none focus:border-primary cursor-pointer"
+          >
+            {repos.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        )}
       </div>
 
-      {/* Metric Cards Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-        <Card variant="metric">
-          <div className="text-[11px] font-mono uppercase text-codexa-text-muted mb-1">Total Packages</div>
-          <div className="text-2xl font-bold font-mono text-codexa-text">{dependencies.length}</div>
-          <p className="text-[11px] text-codexa-text-secondary font-mono mt-1">Direct & transitive</p>
-        </Card>
-        <Card variant="metric">
-          <div className="text-[11px] font-mono uppercase text-codexa-text-muted mb-1">Runtime</div>
-          <div className="text-2xl font-bold font-mono text-codexa-primary">7</div>
-          <p className="text-[11px] text-codexa-text-secondary font-mono mt-1">Production runtime</p>
-        </Card>
-        <Card variant="metric">
-          <div className="text-[11px] font-mono uppercase text-codexa-text-muted mb-1">Dev Tools</div>
-          <div className="text-2xl font-bold font-mono text-codexa-indigo">1</div>
-          <p className="text-[11px] text-codexa-text-secondary font-mono mt-1">Testing & build</p>
-        </Card>
-        <Card variant="metric">
-          <div className="text-[11px] font-mono uppercase text-codexa-text-muted mb-1">Vulnerabilities</div>
-          <div className="text-2xl font-bold font-mono text-emerald-600">0</div>
-          <p className="text-[11px] text-emerald-600 font-mono mt-1">Verified clean</p>
-        </Card>
-      </div>
-
-      {/* Table Container */}
-      <Card className="overflow-hidden">
-        {/* Table Filters Toolbar */}
-        <div className="p-4 border-b border-codexa-border flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-codexa-surface">
-          <div className="w-full sm:w-72">
+      <div className="p-8 max-w-7xl mx-auto w-full space-y-6">
+        {/* Search & Filter Toolbar */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-4 rounded-xl border border-neutral-200 shadow-card">
+          <div className="w-full sm:w-80">
             <Input
+              placeholder="Search package or usage..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search package name or usage..."
-              leftIcon={<Search className="w-3.5 h-3.5" />}
+              leftIcon={<Search className="w-4 h-4 text-neutral-400" />}
             />
           </div>
 
-          <div className="flex items-center gap-1.5 bg-codexa-bg p-1 rounded-lg border border-codexa-border">
-            {["all", "runtime", "dev"].map((t) => (
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center bg-neutral-100 p-0.5 rounded-lg border border-neutral-200 text-xs font-medium">
               <button
-                key={t}
-                onClick={() => setTypeFilter(t)}
-                className={`px-3 py-1 rounded-md text-xs font-mono capitalize transition-all ${
-                  typeFilter === t
-                    ? "bg-codexa-surface text-codexa-primary font-bold shadow-subtle"
-                    : "text-codexa-text-secondary hover:text-codexa-text"
+                onClick={() => setTypeFilter("all")}
+                className={`px-3 py-1 rounded-md transition-all ${
+                  typeFilter === "all"
+                    ? "bg-white text-primary shadow-xs font-semibold"
+                    : "text-neutral-600 hover:text-neutral-900"
                 }`}
               >
-                {t}
+                All ({dependencies.length})
               </button>
-            ))}
+              <button
+                onClick={() => setTypeFilter("runtime")}
+                className={`px-3 py-1 rounded-md transition-all ${
+                  typeFilter === "runtime"
+                    ? "bg-white text-primary shadow-xs font-semibold"
+                    : "text-neutral-600 hover:text-neutral-900"
+                }`}
+              >
+                Runtime
+              </button>
+              <button
+                onClick={() => setTypeFilter("dev")}
+                className={`px-3 py-1 rounded-md transition-all ${
+                  typeFilter === "dev"
+                    ? "bg-white text-primary shadow-xs font-semibold"
+                    : "text-neutral-600 hover:text-neutral-900"
+                }`}
+              >
+                Dev
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Data Table */}
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs font-sans">
-            <thead className="bg-codexa-bg/70 border-b border-codexa-border text-codexa-text-secondary font-mono text-[11px] uppercase tracking-wider">
-              <tr>
-                <th className="py-3 px-5">Package</th>
-                <th className="py-3 px-5">Version</th>
-                <th className="py-3 px-5">Type</th>
-                <th className="py-3 px-5">Usage</th>
-                <th className="py-3 px-5 text-right">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-codexa-border">
-              {filteredDeps.map((dep) => (
-                <tr key={dep.id} className="hover:bg-codexa-surface-hover transition-colors">
-                  <td className="py-3.5 px-5 font-mono font-bold text-codexa-indigo flex items-center gap-2">
-                    <PackageCheck className="w-4 h-4 text-codexa-primary" />
-                    <span>{dep.package}</span>
-                  </td>
-                  <td className="py-3.5 px-5 font-mono text-codexa-text-secondary">
-                    {dep.version}
-                  </td>
-                  <td className="py-3.5 px-5">
-                    <Badge variant={dep.type === "runtime" ? "accent" : "default"} size="sm">
-                      {dep.type}
-                    </Badge>
-                  </td>
-                  <td className="py-3.5 px-5 text-codexa-text-secondary">
-                    {dep.usage}
-                  </td>
-                  <td className="py-3.5 px-5 text-right">
-                    <Badge variant="success" size="sm" dot>
-                      Up to date
-                    </Badge>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+        {/* Real Dependencies Table */}
+        <Card className="bg-white border-neutral-200 shadow-card overflow-hidden">
+          <div className="p-5 border-b border-neutral-100 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <PackageCheck className="w-4 h-4 text-primary" />
+              <h3 className="font-bold text-sm text-neutral-900 font-mono">
+                Verified Dependency Manifest
+              </h3>
+            </div>
+            <Badge variant="accent" size="sm">
+              PARSED FROM REPOSITORY
+            </Badge>
+          </div>
+
+          <div className="overflow-x-auto">
+            {isLoading ? (
+              <div className="py-12 text-center text-xs text-neutral-500 font-mono">
+                Scanning repository dependencies...
+              </div>
+            ) : filteredDeps.length === 0 ? (
+              <div className="py-12 text-center text-xs text-neutral-500 space-y-2">
+                <AlertCircle className="w-5 h-5 mx-auto text-neutral-400" />
+                <p>No matching packages found.</p>
+              </div>
+            ) : (
+              <table className="w-full text-left text-xs font-mono">
+                <thead className="bg-neutral-50/80 border-b border-neutral-200 text-neutral-500 uppercase text-[10px] tracking-wider">
+                  <tr>
+                    <th className="py-3 px-6 font-semibold">Package</th>
+                    <th className="py-3 px-6 font-semibold">Version</th>
+                    <th className="py-3 px-6 font-semibold">Type</th>
+                    <th className="py-3 px-6 font-semibold">Usage & Role</th>
+                    <th className="py-3 px-6 font-semibold">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-neutral-100">
+                  {filteredDeps.map((dep) => (
+                    <tr
+                      key={dep.id}
+                      className="hover:bg-neutral-50/70 transition-colors"
+                    >
+                      <td className="py-3.5 px-6 font-bold text-neutral-900">{dep.package}</td>
+                      <td className="py-3.5 px-6 text-neutral-600">{dep.version}</td>
+                      <td className="py-3.5 px-6">
+                        <span className="px-2 py-0.5 rounded bg-neutral-100 text-neutral-700 text-[10px] uppercase font-semibold">
+                          {dep.type}
+                        </span>
+                      </td>
+                      <td className="py-3.5 px-6 text-neutral-600 font-sans">{dep.usage}</td>
+                      <td className="py-3.5 px-6">
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                          {dep.status}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 };

@@ -105,22 +105,22 @@ export const LandingPage: React.FC = () => {
         {/* Hero Product Preview Mockup */}
         <div id="preview" className="max-w-5xl mx-auto mt-14 relative animate-scale-in">
           {/* Floating Feature Pills */}
-          <div className="absolute -top-4 left-6 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-codexa-surface border border-codexa-border shadow-medium text-xs font-medium text-codexa-text z-20">
+          <Link to="/chat" className="absolute -top-4 left-6 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-codexa-surface border border-codexa-border shadow-medium text-xs font-medium text-codexa-text z-20 hover:border-codexa-primary hover:scale-105 transition-all">
             <MessageSquare className="w-3.5 h-3.5 text-codexa-primary" />
             <span>Ask Questions</span>
-          </div>
-          <div className="absolute -top-4 right-6 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-codexa-surface border border-codexa-border shadow-medium text-xs font-medium text-codexa-text z-20">
+          </Link>
+          <Link to="/repositories" className="absolute -top-4 right-6 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-codexa-surface border border-codexa-border shadow-medium text-xs font-medium text-codexa-text z-20 hover:border-codexa-primary hover:scale-105 transition-all">
             <Code2 className="w-3.5 h-3.5 text-codexa-cyan" />
             <span>Analyze Code</span>
-          </div>
-          <div className="absolute -bottom-4 left-10 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-codexa-surface border border-codexa-border shadow-medium text-xs font-medium text-codexa-text z-20">
+          </Link>
+          <Link to="/issues" className="absolute -bottom-4 left-10 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-codexa-surface border border-codexa-border shadow-medium text-xs font-medium text-codexa-text z-20 hover:border-codexa-primary hover:scale-105 transition-all">
             <AlertTriangle className="w-3.5 h-3.5 text-codexa-warning" />
             <span>Find Issues</span>
-          </div>
-          <div className="absolute -bottom-4 right-10 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-codexa-surface border border-codexa-border shadow-medium text-xs font-medium text-codexa-text z-20">
+          </Link>
+          <Link to="/architecture" className="absolute -bottom-4 right-10 hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-full bg-codexa-surface border border-codexa-border shadow-medium text-xs font-medium text-codexa-text z-20 hover:border-codexa-primary hover:scale-105 transition-all">
             <Layers className="w-3.5 h-3.5 text-codexa-indigo" />
             <span>Understand Architecture</span>
-          </div>
+          </Link>
 
           {/* Product Frame Container */}
           <div className="rounded-2xl border border-codexa-border bg-codexa-surface shadow-elevated overflow-hidden">
@@ -277,45 +277,53 @@ export const LandingPage: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card variant="feature" className="p-6 space-y-3.5">
-            <div className="w-10 h-10 rounded-xl bg-codexa-violet-surface border border-codexa-violet-light flex items-center justify-center text-codexa-primary shadow-subtle">
-              <FileCode className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-bold text-codexa-text">Deep Code Understanding</h3>
-            <p className="text-xs text-codexa-text-secondary leading-relaxed">
-              Full AST parsing, semantic code chunking, symbol hierarchy extraction, and caller relationship mapping.
-            </p>
-          </Card>
+          <Link to="/repositories" className="block group">
+            <Card variant="feature" className="p-6 space-y-3.5 h-full group-hover:border-codexa-primary group-hover:shadow-card-hover transition-all">
+              <div className="w-10 h-10 rounded-xl bg-codexa-violet-surface border border-codexa-violet-light flex items-center justify-center text-codexa-primary shadow-subtle group-hover:bg-codexa-primary group-hover:text-white transition-colors">
+                <FileCode className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-codexa-text group-hover:text-codexa-primary transition-colors">Deep Code Understanding</h3>
+              <p className="text-xs text-codexa-text-secondary leading-relaxed">
+                Full AST parsing, semantic code chunking, symbol hierarchy extraction, and caller relationship mapping.
+              </p>
+            </Card>
+          </Link>
 
-          <Card variant="feature" className="p-6 space-y-3.5">
-            <div className="w-10 h-10 rounded-xl bg-codexa-violet-surface border border-codexa-violet-light flex items-center justify-center text-codexa-primary shadow-subtle">
-              <Search className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-bold text-codexa-text">Hybrid AI Retrieval</h3>
-            <p className="text-xs text-codexa-text-secondary leading-relaxed">
-              5-way retrieval combining BM25, dense vector embeddings, AST symbols, graph propagation, and neural reranking.
-            </p>
-          </Card>
+          <Link to="/search" className="block group">
+            <Card variant="feature" className="p-6 space-y-3.5 h-full group-hover:border-codexa-primary group-hover:shadow-card-hover transition-all">
+              <div className="w-10 h-10 rounded-xl bg-codexa-violet-surface border border-codexa-violet-light flex items-center justify-center text-codexa-primary shadow-subtle group-hover:bg-codexa-primary group-hover:text-white transition-colors">
+                <Search className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-codexa-text group-hover:text-codexa-primary transition-colors">Hybrid AI Retrieval</h3>
+              <p className="text-xs text-codexa-text-secondary leading-relaxed">
+                5-way retrieval combining BM25, dense vector embeddings, AST symbols, graph propagation, and neural reranking.
+              </p>
+            </Card>
+          </Link>
 
-          <Card variant="feature" className="p-6 space-y-3.5">
-            <div className="w-10 h-10 rounded-xl bg-codexa-violet-surface border border-codexa-violet-light flex items-center justify-center text-codexa-primary shadow-subtle">
-              <GitBranch className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-bold text-codexa-text">Code Dependency Graph</h3>
-            <p className="text-xs text-codexa-text-secondary leading-relaxed">
-              Interactive visual dependency topology, DFS circular dependency detection, and blast radius risk analysis.
-            </p>
-          </Card>
+          <Link to="/graph" className="block group">
+            <Card variant="feature" className="p-6 space-y-3.5 h-full group-hover:border-codexa-primary group-hover:shadow-card-hover transition-all">
+              <div className="w-10 h-10 rounded-xl bg-codexa-violet-surface border border-codexa-violet-light flex items-center justify-center text-codexa-primary shadow-subtle group-hover:bg-codexa-primary group-hover:text-white transition-colors">
+                <GitBranch className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-codexa-text group-hover:text-codexa-primary transition-colors">Code Dependency Graph</h3>
+              <p className="text-xs text-codexa-text-secondary leading-relaxed">
+                Interactive visual dependency topology, DFS circular dependency detection, and blast radius risk analysis.
+              </p>
+            </Card>
+          </Link>
 
-          <Card variant="feature" className="p-6 space-y-3.5">
-            <div className="w-10 h-10 rounded-xl bg-codexa-violet-surface border border-codexa-violet-light flex items-center justify-center text-codexa-primary shadow-subtle">
-              <ShieldCheck className="w-5 h-5" />
-            </div>
-            <h3 className="text-sm font-bold text-codexa-text">Grounded Answers</h3>
-            <p className="text-xs text-codexa-text-secondary leading-relaxed">
-              Every synthesized claim is validated against repository line bounds. Unknown facts are explicitly flagged.
-            </p>
-          </Card>
+          <Link to="/chat" className="block group">
+            <Card variant="feature" className="p-6 space-y-3.5 h-full group-hover:border-codexa-primary group-hover:shadow-card-hover transition-all">
+              <div className="w-10 h-10 rounded-xl bg-codexa-violet-surface border border-codexa-violet-light flex items-center justify-center text-codexa-primary shadow-subtle group-hover:bg-codexa-primary group-hover:text-white transition-colors">
+                <ShieldCheck className="w-5 h-5" />
+              </div>
+              <h3 className="text-sm font-bold text-codexa-text group-hover:text-codexa-primary transition-colors">Grounded Answers</h3>
+              <p className="text-xs text-codexa-text-secondary leading-relaxed">
+                Every synthesized claim is validated against repository line bounds. Unknown facts are explicitly flagged.
+              </p>
+            </Card>
+          </Link>
         </div>
       </section>
 

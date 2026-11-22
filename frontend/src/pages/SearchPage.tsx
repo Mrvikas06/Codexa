@@ -59,7 +59,7 @@ export const SearchPage: React.FC = () => {
     mutationFn: () =>
       apiPost<SearchResponse>("/api/v1/search/hybrid", {
         query: searchQuery,
-        repository_id: selectedRepoId,
+        repository_id: selectedRepoId || (repos[0]?.id),
         language: languageFilter || undefined,
         top_k: topK,
         enable_reranker: enableReranker,
