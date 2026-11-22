@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Search, Sparkles } from "lucide-react";
+import { Search, Sparkles, ExternalLink, Code2, Database } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { apiGet, apiPost } from "@/lib/api";
+import { useRepositoryStore } from "@/stores/repository";
+import { Button } from "@/components/ui/Button";
+import { Input } from "@/components/ui/Input";
+import { Badge } from "@/components/ui/Badge";
+import { Card } from "@/components/ui/Card";
 
 interface Repository {
   id: string;
@@ -30,7 +36,8 @@ interface SearchResponse {
 }
 
 export const SearchPage: React.FC = () => {
-  const [selectedRepoId, setSelectedRepoId] = useState<string | null>(null);
+  const navigate = useNavigate();
+  const { selectedRepoId, setSelectedRepo } = useRepositoryStore();
   const [searchQuery, setSearchQuery] = useState("");
   const [languageFilter, setLanguageFilter] = useState<string>("");
   const [enableReranker, setEnableReranker] = useState(true);
@@ -44,9 +51,9 @@ export const SearchPage: React.FC = () => {
 
   useEffect(() => {
     if (repos.length > 0 && !selectedRepoId && repos[0]) {
-      setSelectedRepoId(repos[0].id);
+      setSelectedRepo(repos[0].id, repos[0].name);
     }
-  }, [repos, selectedRepoId]);
+  }, [repos, selectedRepoId, setSelectedRepo]);
 
   // 2. Search mutation
   const searchMutation = useMutation({
@@ -69,25 +76,28 @@ export const SearchPage: React.FC = () => {
   const results = searchMutation.data?.results || [];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#0B0D10] text-[#F1F3F5] overflow-hidden">
-      {/* Search Header Bar */}
-      <div className="p-6 border-b border-[#262B33] bg-[#0E1014] space-y-4">
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-atlas-bg text-atlas-text overflow-hidden">
+      {/* Top Search Controls Bar */}
+      <div className="p-6 border-b border-atlas-border bg-atlas-surface space-y-4 shrink-0">
         <div className="flex items-center justify-between">
-          <div className="space-y-1">
-            <h1 className="text-lg font-semibold tracking-tight flex items-center space-x-2">
-              <Search className="w-5 h-5 text-[#6C8CFF]" />
-              <span>Hybrid Code Retrieval Engine</span>
+          <div>
+            <h1 className="text-lg font-bold tracking-tight text-atlas-text flex items-center gap-2">
+              <Search className="w-5 h-5 text-atlas-accent" />
+              <span>5-Way Hybrid Code Retrieval</span>
             </h1>
-            <p className="text-xs text-[#A0A7B2]">
-              Combines Okapi BM25 + Dense Vectors (Model A) + AST Hierarchy + Dependency Graph + Cross-Encoder Reranker (Model B).
+            <p className="text-xs text-atlas-text-secondary mt-0.5">
+              Combines BM25, dense embeddings (Model A), AST symbols, dependency graph, and cross-encoder reranking (Model B).
             </p>
           </div>
 
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center gap-3">
             <select
               value={selectedRepoId || ""}
-              onChange={(e) => setSelectedRepoId(e.target.value)}
-              className="bg-[#14171C] border border-[#262B33] text-xs text-[#F1F3F5] rounded px-3 py-1.5 focus:outline-none focus:border-[#6C8CFF]"
+              onChange={(e) => {
+                const r = repos.find((repo) => repo.id === e.target.value);
+                setSelectedRepo(e.target.value, r?.name);
+              }}
+              className="bg-atlas-bg border border-atlas-border text-xs text-atlas-text rounded-md px-3 py-1.5 font-mono focus:outline-none focus:border-atlas-accent cursor-pointer"
             >
               {repos.map((r) => (
                 <option key={r.id} value={r.id}>
@@ -98,108 +108,138 @@ export const SearchPage: React.FC = () => {
           </div>
         </div>
 
-        {/* Search Input & Controls */}
-        <form onSubmit={handleSearch} className="flex items-center space-x-2">
+        {/* Search Input Bar */}
+        <form onSubmit={handleSearch} className="flex items-center gap-2">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-3 text-[#69717D]" />
-            <input
-              type="text"
-              placeholder="Search code symbols, identifiers, queries (e.g. 'validate_token', 'JWT auth')..."
+            <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-[#14171C] border border-[#262B33] rounded-lg text-xs text-[#F1F3F5] placeholder-[#69717D] focus:outline-none focus:border-[#6C8CFF]"
+              placeholder="Search code symbols, functions, architectural components (e.g. 'validate_token', 'JWT auth')..."
+              leftIcon={<Search className="w-4 h-4" />}
             />
           </div>
 
-          <input
-            type="text"
-            placeholder="Lang filter"
-            value={languageFilter}
-            onChange={(e) => setLanguageFilter(e.target.value)}
-            className="w-28 px-3 py-2 bg-[#14171C] border border-[#262B33] rounded-lg text-xs text-[#F1F3F5] placeholder-[#69717D] focus:outline-none focus:border-[#6C8CFF]"
-          />
-
-          <label className="flex items-center space-x-2 text-xs text-[#A0A7B2] bg-[#14171C] border border-[#262B33] px-3 py-2 rounded-lg cursor-pointer">
-            <input
-              type="checkbox"
-              checked={enableReranker}
-              onChange={(e) => setEnableReranker(e.target.checked)}
-              className="rounded bg-[#0B0D10] border-[#262B33] text-[#6C8CFF] focus:ring-0"
+          <div className="w-32">
+            <Input
+              value={languageFilter}
+              onChange={(e) => setLanguageFilter(e.target.value)}
+              placeholder="Language (py)"
             />
-            <span>Neural Rerank</span>
-          </label>
+          </div>
 
           <button
-            type="submit"
-            disabled={!searchQuery.trim() || searchMutation.isPending || !selectedRepoId}
-            className="px-5 py-2 bg-[#6C8CFF] hover:bg-[#5b7ce6] text-white rounded-lg text-xs font-medium transition disabled:opacity-50"
+            type="button"
+            onClick={() => setEnableReranker(!enableReranker)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-mono border transition-colors ${
+              enableReranker
+                ? "bg-atlas-accent/15 border-atlas-accent/40 text-atlas-accent"
+                : "bg-atlas-surface border-atlas-border text-atlas-text-muted"
+            }`}
           >
-            {searchMutation.isPending ? "Searching..." : "Search"}
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>Neural Rerank</span>
           </button>
+
+          <Button
+            type="submit"
+            variant="primary"
+            size="md"
+            loading={searchMutation.isPending}
+            disabled={!searchQuery.trim() || !selectedRepoId}
+          >
+            Search
+          </Button>
         </form>
       </div>
 
-      {/* Results View */}
-      <div className="flex-1 overflow-auto p-6 max-w-5xl w-full mx-auto space-y-4">
+      {/* Search Results Area */}
+      <div className="flex-1 overflow-y-auto p-6 max-w-5xl w-full mx-auto space-y-4">
         {searchMutation.isPending ? (
-          <div className="p-12 text-center text-xs text-[#A0A7B2] space-y-2">
-            <Sparkles className="w-6 h-6 text-[#6C8CFF] animate-spin mx-auto" />
-            <div>Running 5-way hybrid retrieval & neural cross-encoder...</div>
+          <div className="py-20 text-center space-y-3">
+            <div className="w-6 h-6 border-2 border-atlas-accent border-t-transparent rounded-full animate-spin mx-auto" />
+            <p className="text-xs text-atlas-text-secondary font-mono">
+              Executing BM25 lexical match, vector cosine similarity & cross-encoder reranking...
+            </p>
           </div>
-        ) : results.length === 0 ? (
-          <div className="p-16 text-center text-xs text-[#69717D]">
-            {searchMutation.data ? "No matching code chunks found for this query." : "Enter a search query above to inspect code intelligence results."}
+        ) : searchMutation.isSuccess && results.length === 0 ? (
+          <div className="py-20 text-center text-xs text-atlas-text-muted">
+            No code chunks matched query "{searchQuery}".
+          </div>
+        ) : !searchMutation.data ? (
+          <div className="py-20 text-center space-y-2">
+            <Database className="w-8 h-8 text-atlas-text-muted mx-auto" />
+            <p className="text-xs text-atlas-text-secondary">
+              Enter a code query above to run reciprocal rank fusion across the indexed repository.
+            </p>
           </div>
         ) : (
-          results.map((hit) => (
-            <div
-              key={hit.chunk_id}
-              className="p-4 bg-[#14171C] border border-[#262B33] rounded-xl space-y-3 font-mono text-xs hover:border-[#343B45] transition"
-            >
-              {/* Hit Header */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <span className="w-5 h-5 rounded bg-[#191D23] border border-[#262B33] flex items-center justify-center text-[10px] text-[#A0A7B2]">
-                    #{hit.rank}
-                  </span>
-                  <span className="font-semibold text-[#F1F3F5]">{hit.file_path}</span>
-                  {hit.symbol_name && (
-                    <span className="text-[#6C8CFF]">({hit.symbol_name})</span>
-                  )}
-                  <span className="text-[10px] text-[#69717D]">
-                    Lines {hit.start_line}–{hit.end_line}
-                  </span>
-                </div>
+          <>
+            <div className="flex items-center justify-between text-xs font-mono text-atlas-text-muted pb-1">
+              <span>FOUND {results.length} EVIDENCE CANDIDATES</span>
+              <span>RRF COMBINED (k=60)</span>
+            </div>
 
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-1">
-                    {hit.retrieval_sources.map((src, idx) => (
-                      <span
-                        key={idx}
-                        className="text-[9px] px-1.5 py-0.5 rounded bg-[#191D23] border border-[#262B33] text-[#A0A7B2] uppercase"
-                      >
-                        {src}
-                      </span>
-                    ))}
+            <div className="space-y-3">
+              {results.map((hit) => (
+                <Card
+                  key={hit.chunk_id}
+                  variant="interactive"
+                  className="p-4 space-y-3 font-mono text-xs"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 font-semibold text-atlas-accent">
+                      <Code2 className="w-4 h-4" />
+                      <span>{hit.file_path}</span>
+                      {hit.symbol_name && (
+                        <span className="text-atlas-text">::{hit.symbol_name}</span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" size="sm">
+                        L{hit.start_line} – L{hit.end_line}
+                      </Badge>
+                      <Badge variant="accent" size="sm">
+                        RRF: {hit.rrf_score.toFixed(4)}
+                      </Badge>
+                      {enableReranker && (
+                        <Badge variant="success" size="sm">
+                          Rerank: {hit.reranker_score.toFixed(2)}
+                        </Badge>
+                      )}
+                    </div>
                   </div>
 
-                  <span className="text-[10px] text-[#69717D] pl-2 border-l border-[#262B33]">
-                    RRF: {hit.rrf_score.toFixed(4)}
-                  </span>
-                  {hit.reranker_score !== 0 && (
-                    <span className="text-[10px] text-emerald-400">
-                      Score: {hit.reranker_score.toFixed(4)}
-                    </span>
-                  )}
-                </div>
-              </div>
+                  {/* Code preview block */}
+                  <pre className="p-3 bg-atlas-bg rounded border border-atlas-border text-atlas-text text-[11px] overflow-x-auto leading-relaxed">
+                    {hit.content}
+                  </pre>
 
-              {/* Code Snippet */}
-              <pre className="p-3 bg-[#0B0D10] border border-[#262B33] rounded-lg text-[#F1F3F5] text-[11px] overflow-x-auto leading-relaxed">
-                {hit.content}
-              </pre>
+                  <div className="flex items-center justify-between text-[10px] text-atlas-text-muted pt-1">
+                    <div className="flex items-center gap-1.5">
+                      <span>Channels:</span>
+                      {hit.retrieval_sources.map((src, idx) => (
+                        <span
+                          key={idx}
+                          className="px-1.5 py-0.5 rounded bg-atlas-surface-secondary border border-atlas-border text-atlas-text-secondary uppercase"
+                        >
+                          {src}
+                        </span>
+                      ))}
+                    </div>
+
+                    <button
+                      onClick={() => navigate("/repositories")}
+                      className="text-atlas-accent hover:underline flex items-center gap-1"
+                    >
+                      Open in Explorer
+                      <ExternalLink className="w-3 h-3" />
+                    </button>
+                  </div>
+                </Card>
+              ))}
             </div>
-          ))
+          </>
         )}
       </div>
     </div>
