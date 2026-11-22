@@ -1,24 +1,30 @@
 import { createBrowserRouter } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
+import { LandingPage } from "@/pages/LandingPage";
 import { Dashboard } from "@/pages/Dashboard";
 import { RepositoriesPage } from "@/pages/RepositoriesPage";
 import { SearchPage } from "@/pages/SearchPage";
 import { ChatPage } from "@/pages/ChatPage";
 import { GraphPage } from "@/pages/GraphPage";
 import { ArchitecturePage } from "@/pages/ArchitecturePage";
+import { DependenciesPage } from "@/pages/DependenciesPage";
+import { IssuesPage } from "@/pages/IssuesPage";
 import { ModelsPage } from "@/pages/ModelsPage";
 import { TrainingPage } from "@/pages/TrainingPage";
 import { EvaluationPage } from "@/pages/EvaluationPage";
 import { DatasetsPage } from "@/pages/DatasetsPage";
 import { ActivityPage } from "@/pages/ActivityPage";
 import { SettingsPage } from "@/pages/SettingsPage";
-import { DependenciesPage, IssuesPage } from "@/pages/Placeholder";
 
 export const router = createBrowserRouter([
   {
+    path: "/",
+    element: <LandingPage />,
+  },
+  {
     element: <AppShell />,
     children: [
-      { path: "/", element: <Dashboard /> },
+      { path: "/dashboard", element: <Dashboard /> },
       { path: "/repositories", element: <RepositoriesPage /> },
       { path: "/search", element: <SearchPage /> },
       { path: "/chat", element: <ChatPage /> },

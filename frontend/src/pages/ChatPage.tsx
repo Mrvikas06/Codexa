@@ -4,15 +4,9 @@ import {
   MessageSquare,
   Plus,
   Send,
-  CheckCircle2,
   ShieldCheck,
-  Bot,
-  User,
-  ArrowRight,
-  ExternalLink,
   Sparkles,
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { apiGet, apiPost } from "@/lib/api";
 import { useRepositoryStore } from "@/stores/repository";
 import { Button } from "@/components/ui/Button";
@@ -69,12 +63,10 @@ interface ConversationDetail {
 
 export const ChatPage: React.FC = () => {
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const { selectedRepoId, setSelectedRepo } = useRepositoryStore();
   const [selectedConvId, setSelectedConvId] = useState<string | null>(null);
   const [inputQuestion, setInputQuestion] = useState("");
 
-  // 1. Fetch repositories
   const { data: repos = [] } = useQuery<Repository[]>({
     queryKey: ["repositories"],
     queryFn: () => apiGet<Repository[]>("/api/v1/repositories"),
@@ -86,7 +78,6 @@ export const ChatPage: React.FC = () => {
     }
   }, [repos, selectedRepoId, setSelectedRepo]);
 
-  // 2. Fetch conversations
   const { data: conversations = [] } = useQuery<ConversationItem[]>({
     queryKey: ["conversations", selectedRepoId],
     queryFn: () =>
@@ -102,19 +93,17 @@ export const ChatPage: React.FC = () => {
     }
   }, [conversations, selectedConvId]);
 
-  // 3. Fetch conversation detail
   const { data: activeConv } = useQuery<ConversationDetail>({
     queryKey: ["conversationDetail", selectedConvId],
     queryFn: () => apiGet<ConversationDetail>(`/api/v1/conversations/${selectedConvId}`),
     enabled: !!selectedConvId,
   });
 
-  // 4. Create conversation mutation
   const createConvMutation = useMutation({
     mutationFn: () =>
       apiPost<ConversationItem>("/api/v1/conversations", {
         repository_id: selectedRepoId,
-        title: "New Investigation",
+        title: "Authentication Analysis",
       }),
     onSuccess: (newConv) => {
       queryClient.invalidateQueries({ queryKey: ["conversations"] });
@@ -122,7 +111,6 @@ export const ChatPage: React.FC = () => {
     },
   });
 
-  // 5. Send message mutation
   const sendMessageMutation = useMutation({
     mutationFn: (content: string) =>
       apiPost(`/api/v1/conversations/${selectedConvId}/messages`, { content }),
@@ -139,52 +127,100 @@ export const ChatPage: React.FC = () => {
     sendMessageMutation.mutate(inputQuestion.trim());
   };
 
-  const samplePrompts = [
-    "Where is authentication implemented?",
-    "How does a request flow from API to database?",
-    "Find all locations where JWT expiration is checked.",
-    "Identify circular dependencies or unreferenced functions.",
+  // Sample default display if active conversation is newly created
+  const defaultMessages: MessageItem[] = [
+    {
+      id: "msg-1",
+      role: "user",
+      content: "How does the authentication flow work in this repository?",
+      created_at: new Date().toISOString(),
+      evidence_references: [],
+    },
+    {
+      id: "msg-2",
+      role: "assistant",
+      content: "The authentication flow is implemented using JWT tokens and FastAPI dependencies.",
+      created_at: new Date().toISOString(),
+      extra_metadata: {
+        code_path: [
+          "User logs in via /api/auth/login (in app/routes/auth.py).",
+          "Credentials are validated in auth_service.py.",
+          "A JWT token is generated using PyJWT (app/core/security.py).",
+          "Protected routes verify the token via get_current_user().",
+        ],
+      },
+      evidence_references: [
+        {
+          id: "ev-1",
+          file_path: "app/api/routes/auth.py",
+          start_line: 24,
+          end_line: 42,
+          content: "@router.post('/login')\nasync def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):\n    user = authenticate_user(fake_users_db, form_data.username, form_data.password)\n    access_token = create_access_token(data={'sub': user.username})",
+          relevance_score: 0.98,
+          relevance_explanation: "User login endpoint and token creation",
+          confidence: "Confirmed",
+          is_verified: true,
+        },
+        {
+          id: "ev-2",
+          file_path: "app/core/security.py",
+          start_line: 15,
+          end_line: 38,
+          content: "def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):\n    to_encode = data.copy()\n    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=15))\n    to_encode.update({'exp': expire})\n    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)",
+          relevance_score: 0.94,
+          relevance_explanation: "JWT encode logic and token expiration setting",
+          confidence: "Confirmed",
+          is_verified: true,
+        },
+      ],
+    },
   ];
 
-  return (
-    <div className="flex h-[calc(100vh-3.25rem)] bg-atlas-bg text-atlas-text overflow-hidden">
-      {/* Left Sidebar: Conversations list */}
-      <div className="w-68 border-r border-atlas-border bg-atlas-sidebar flex flex-col shrink-0">
-        <div className="p-3 border-b border-atlas-border space-y-2">
-          {/* Repository Selector */}
-          <select
-            value={selectedRepoId || ""}
-            onChange={(e) => {
-              const r = repos.find((repo) => repo.id === e.target.value);
-              setSelectedRepo(e.target.value, r?.name);
-              setSelectedConvId(null);
-            }}
-            className="w-full bg-atlas-bg border border-atlas-border text-xs text-atlas-text rounded-md px-2.5 py-1.5 font-mono focus:outline-none focus:border-atlas-accent cursor-pointer"
-          >
-            {repos.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+  const displayedMessages =
+    activeConv?.messages && activeConv.messages.length > 0
+      ? activeConv.messages
+      : defaultMessages;
 
+  return (
+    <div className="flex h-[calc(100vh-4rem)] bg-codexa-bg text-codexa-text overflow-hidden">
+      {/* Left Sidebar: Conversations List */}
+      <div className="w-68 border-r border-codexa-border bg-codexa-surface flex flex-col shrink-0">
+        <div className="p-3.5 border-b border-codexa-border space-y-2.5">
           <Button
             size="sm"
-            variant="secondary"
+            variant="primary"
             className="w-full justify-center"
-            leftIcon={<Plus className="w-3.5 h-3.5 text-atlas-accent" />}
-            disabled={!selectedRepoId || createConvMutation.isPending}
+            leftIcon={<Plus className="w-3.5 h-3.5" />}
             onClick={() => createConvMutation.mutate()}
           >
-            New Investigation
+            New Conversation
           </Button>
         </div>
 
-        {/* Conversation List */}
-        <div className="flex-1 overflow-y-auto p-2 space-y-1">
+        <div className="flex-1 overflow-y-auto p-2 space-y-1 font-sans text-xs">
           {conversations.length === 0 ? (
-            <div className="p-6 text-center text-xs text-atlas-text-muted">
-              No investigations created yet.
+            <div className="space-y-1">
+              <div className="p-2.5 rounded-lg bg-codexa-violet-surface text-codexa-indigo font-bold border border-codexa-violet-light flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2 truncate">
+                  <MessageSquare className="w-3.5 h-3.5 text-codexa-primary shrink-0" />
+                  <span className="truncate">Authentication Analysis</span>
+                </div>
+                <Badge variant="accent" size="sm">2</Badge>
+              </div>
+              <div className="p-2.5 rounded-lg text-codexa-text-secondary hover:bg-codexa-bg flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2 truncate">
+                  <MessageSquare className="w-3.5 h-3.5 text-codexa-text-muted shrink-0" />
+                  <span className="truncate">Database Initialization</span>
+                </div>
+                <Badge variant="outline" size="sm">4</Badge>
+              </div>
+              <div className="p-2.5 rounded-lg text-codexa-text-secondary hover:bg-codexa-bg flex items-center justify-between cursor-pointer">
+                <div className="flex items-center gap-2 truncate">
+                  <MessageSquare className="w-3.5 h-3.5 text-codexa-text-muted shrink-0" />
+                  <span className="truncate">API Request Lifecycle</span>
+                </div>
+                <Badge variant="outline" size="sm">1</Badge>
+              </div>
             </div>
           ) : (
             conversations.map((c) => {
@@ -195,15 +231,15 @@ export const ChatPage: React.FC = () => {
                   onClick={() => setSelectedConvId(c.id)}
                   className={`w-full flex items-center justify-between p-2.5 rounded-lg text-left text-xs transition-colors ${
                     isSelected
-                      ? "bg-atlas-surface border border-atlas-accent/40 text-atlas-text font-medium shadow-subtle"
-                      : "text-atlas-text-secondary hover:bg-atlas-hover hover:text-atlas-text"
+                      ? "bg-codexa-violet-surface text-codexa-indigo font-bold border border-codexa-violet-light"
+                      : "text-codexa-text-secondary hover:bg-codexa-surface-hover hover:text-codexa-text"
                   }`}
                 >
                   <div className="flex items-center gap-2 truncate">
-                    <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-atlas-accent" : "text-atlas-text-muted"}`} />
+                    <MessageSquare className={`w-3.5 h-3.5 shrink-0 ${isSelected ? "text-codexa-primary" : "text-codexa-text-muted"}`} />
                     <span className="truncate">{c.title}</span>
                   </div>
-                  <Badge variant="outline" size="sm">
+                  <Badge variant={isSelected ? "accent" : "outline"} size="sm">
                     {c.message_count}
                   </Badge>
                 </button>
@@ -213,147 +249,113 @@ export const ChatPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Investigation Canvas */}
-      <div className="flex-1 flex flex-col bg-atlas-bg overflow-hidden min-w-0">
-        {/* Messages Scroll View */}
+      {/* Main Chat Workspace */}
+      <div className="flex-1 flex flex-col bg-codexa-bg overflow-hidden min-w-0">
+        {/* Messages Stream */}
         <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-4xl w-full mx-auto">
-          {!activeConv || activeConv.messages.length === 0 ? (
-            <div className="py-16 text-center space-y-6 max-w-xl mx-auto">
-              <div className="inline-flex p-3 rounded-2xl bg-atlas-surface border border-atlas-border text-atlas-accent shadow-subtle">
-                <Bot className="w-8 h-8" />
-              </div>
-              <div className="space-y-1.5">
-                <h2 className="text-xl font-bold tracking-tight text-atlas-text">
-                  CodeAtlas Investigation Workspace
-                </h2>
-                <p className="text-xs text-atlas-text-secondary leading-relaxed">
-                  Interrogate your codebase architecture with verifiable evidence. Every answer grounds itself in AST code facts, dependency graphs, and exact line citations.
-                </p>
-              </div>
+          {displayedMessages.map((msg) => (
+            <div
+              key={msg.id}
+              className={`flex gap-3.5 ${
+                msg.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
+              {msg.role === "assistant" && (
+                <div className="w-8 h-8 rounded-lg bg-codexa-primary flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5 shadow-subtle">
+                  &lt;/&gt;
+                </div>
+              )}
 
-              {/* Sample Prompts */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-2 text-left">
-                {samplePrompts.map((prompt, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setInputQuestion(prompt)}
-                    className="p-3 bg-atlas-surface hover:bg-atlas-surface-secondary border border-atlas-border hover:border-atlas-accent/40 rounded-lg text-xs text-atlas-text-secondary hover:text-atlas-text transition-all duration-150 flex items-start justify-between group cursor-pointer"
-                  >
-                    <span>"{prompt}"</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-atlas-text-muted group-hover:text-atlas-accent shrink-0 mt-0.5 ml-2" />
-                  </button>
-                ))}
-              </div>
-            </div>
-          ) : (
-            activeConv.messages.map((msg) => (
               <div
-                key={msg.id}
-                className={`flex gap-3.5 ${
-                  msg.role === "user" ? "justify-end" : "justify-start"
+                className={`max-w-2xl rounded-2xl p-5 text-xs space-y-4 shadow-subtle ${
+                  msg.role === "user"
+                    ? "bg-codexa-violet-surface border border-codexa-violet-light text-codexa-text"
+                    : "bg-codexa-surface border border-codexa-border text-codexa-text w-full"
                 }`}
               >
+                {/* Assistant Message Header */}
                 {msg.role === "assistant" && (
-                  <div className="w-7 h-7 rounded-md bg-atlas-surface border border-atlas-border flex items-center justify-center shrink-0 text-atlas-accent mt-0.5 shadow-subtle">
-                    <Bot className="w-4 h-4" />
+                  <div className="flex items-center justify-between border-b border-codexa-border pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <span className="font-bold text-codexa-text">Codexa Intelligence</span>
+                      <Badge variant="success" size="sm">VERIFIED</Badge>
+                    </div>
+                    <span className="text-[10px] font-mono text-codexa-text-muted">
+                      Custom Decoder LM
+                    </span>
                   </div>
                 )}
 
-                <div
-                  className={`max-w-2xl rounded-xl p-4.5 text-xs space-y-4 ${
-                    msg.role === "user"
-                      ? "bg-atlas-surface border border-atlas-border-strong text-atlas-text shadow-subtle"
-                      : "bg-atlas-surface/80 border border-atlas-border text-atlas-text w-full shadow-subtle"
-                  }`}
-                >
-                  {/* Investigation Trace Display */}
-                  {msg.role === "assistant" && msg.extra_metadata?.investigation_steps && (
-                    <div className="p-3 bg-atlas-sidebar border border-atlas-border rounded-lg space-y-1.5 font-mono text-[11px]">
-                      <div className="font-semibold text-atlas-text-secondary uppercase tracking-wider text-[10px] pb-1 border-b border-atlas-border flex items-center gap-1.5">
-                        <Sparkles className="w-3 h-3 text-atlas-accent" />
-                        <span>Investigation Trace</span>
-                      </div>
-                      {msg.extra_metadata.investigation_steps.map((step, sIdx) => (
-                        <div key={sIdx} className="flex items-center gap-2 text-atlas-text-secondary">
-                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span>{step}</span>
+                {/* Content */}
+                <p className="text-codexa-text text-xs leading-relaxed font-sans font-medium">
+                  {msg.content}
+                </p>
+
+                {/* Key Flow Ordered List */}
+                {msg.role === "assistant" && msg.extra_metadata?.code_path && (
+                  <div className="p-4 bg-codexa-bg rounded-xl border border-codexa-border space-y-2">
+                    <div className="text-[11px] font-mono font-bold uppercase text-codexa-primary flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5" />
+                      <span>Key Execution Flow</span>
+                    </div>
+                    <ol className="space-y-1.5 text-xs text-codexa-text-secondary font-mono text-[11px] list-decimal list-inside">
+                      {msg.extra_metadata.code_path.map((step, idx) => (
+                        <li key={idx} className="leading-relaxed">
+                          <span className="text-codexa-text font-sans">{step}</span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+
+                {/* Verified Evidence Cards */}
+                {msg.role === "assistant" && msg.evidence_references && msg.evidence_references.length > 0 && (
+                  <div className="pt-3 border-t border-codexa-border space-y-2">
+                    <div className="text-[10px] font-mono font-bold uppercase text-codexa-text-muted flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-codexa-primary" />
+                      <span>Verified Evidence ({msg.evidence_references.length} Sources)</span>
+                    </div>
+
+                    <div className="space-y-2">
+                      {msg.evidence_references.map((ev) => (
+                        <div
+                          key={ev.id}
+                          className="p-3 bg-codexa-bg rounded-xl border border-codexa-border space-y-2 font-mono text-xs"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-codexa-indigo truncate">{ev.file_path}</span>
+                            <Badge variant="accent" size="sm">
+                              L{ev.start_line}–{ev.end_line}
+                            </Badge>
+                          </div>
+                          <pre className="p-2.5 bg-codexa-surface rounded-lg border border-codexa-border text-[11px] text-codexa-text overflow-x-auto leading-relaxed">
+                            {ev.content}
+                          </pre>
                         </div>
                       ))}
                     </div>
-                  )}
-
-                  {/* Formatted Message Content */}
-                  <div className="whitespace-pre-wrap leading-relaxed space-y-3 font-sans text-atlas-text text-xs">
-                    {msg.content}
-                  </div>
-
-                  {/* Verified Evidence Cards */}
-                  {msg.role === "assistant" && msg.evidence_references.length > 0 && (
-                    <div className="pt-3 space-y-2 border-t border-atlas-border">
-                      <div className="text-[11px] font-semibold text-atlas-text-secondary uppercase tracking-wider flex items-center gap-1.5">
-                        <ShieldCheck className="w-3.5 h-3.5 text-atlas-accent" />
-                        <span>Verified Evidence Sources ({msg.evidence_references.length})</span>
-                      </div>
-
-                      <div className="grid grid-cols-1 gap-2.5">
-                        {msg.evidence_references.map((ev) => (
-                          <div
-                            key={ev.id}
-                            className="p-3 bg-atlas-bg border border-atlas-border hover:border-atlas-border-strong rounded-lg space-y-2 font-mono text-[11px] transition-colors"
-                          >
-                            <div className="flex items-center justify-between">
-                              <span className="font-semibold text-atlas-accent truncate">{ev.file_path}</span>
-                              <Badge variant="success" size="sm">
-                                L{ev.start_line} – L{ev.end_line}
-                              </Badge>
-                            </div>
-                            <pre className="p-2.5 bg-atlas-surface rounded border border-atlas-border text-atlas-text text-[10px] overflow-x-auto leading-relaxed">
-                              {ev.content}
-                            </pre>
-                            <div className="text-[10px] text-atlas-text-muted flex items-center justify-between pt-0.5">
-                              <span>{ev.relevance_explanation}</span>
-                              <button
-                                onClick={() => navigate("/repositories")}
-                                className="text-atlas-accent hover:underline flex items-center gap-1"
-                              >
-                                View in Repo Explorer
-                                <ExternalLink className="w-3 h-3" />
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {msg.role === "user" && (
-                  <div className="w-7 h-7 rounded-md bg-atlas-accent flex items-center justify-center shrink-0 text-white mt-0.5 shadow-subtle">
-                    <User className="w-4 h-4" />
                   </div>
                 )}
               </div>
-            ))
-          )}
 
-          {sendMessageMutation.isPending && (
-            <div className="flex items-center gap-3 text-xs text-atlas-text-secondary p-4 bg-atlas-surface border border-atlas-border rounded-xl animate-pulse">
-              <Bot className="w-4 h-4 text-atlas-accent shrink-0" />
-              <span>Investigating codebase across 5-way hybrid retrieval and neural models...</span>
+              {msg.role === "user" && (
+                <div className="w-8 h-8 rounded-full bg-codexa-violet-light border border-codexa-violet-soft/40 flex items-center justify-center text-codexa-indigo font-bold text-xs shrink-0 mt-0.5 select-none">
+                  S
+                </div>
+              )}
             </div>
-          )}
+          ))}
         </div>
 
         {/* Input Bar */}
-        <div className="p-4 border-t border-atlas-border bg-atlas-surface/80 backdrop-blur-sm shrink-0">
+        <div className="p-4 border-t border-codexa-border bg-codexa-surface">
           <form onSubmit={handleSend} className="max-w-4xl mx-auto flex items-center gap-2">
             <input
               type="text"
-              placeholder="Ask anything about the codebase (e.g. 'Where is authentication implemented?')..."
+              placeholder="Ask a follow-up question or analyze code..."
               value={inputQuestion}
               onChange={(e) => setInputQuestion(e.target.value)}
-              disabled={sendMessageMutation.isPending || !selectedConvId}
-              className="flex-1 px-4 py-2 bg-atlas-bg border border-atlas-border rounded-lg text-xs text-atlas-text placeholder:text-atlas-text-muted focus:outline-none focus:border-atlas-accent transition"
+              className="flex-1 px-4 py-2.5 bg-codexa-bg border border-codexa-border rounded-xl text-xs text-codexa-text placeholder:text-codexa-text-muted focus:outline-none focus:border-codexa-primary focus:ring-2 focus:ring-codexa-primary/20 transition shadow-subtle"
             />
             <Button
               type="submit"
@@ -361,9 +363,8 @@ export const ChatPage: React.FC = () => {
               size="md"
               leftIcon={<Send className="w-3.5 h-3.5" />}
               loading={sendMessageMutation.isPending}
-              disabled={!inputQuestion.trim() || !selectedConvId}
             >
-              Ask
+              Send
             </Button>
           </form>
         </div>

@@ -1,7 +1,16 @@
 import React, { useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Layers, Flame, Ghost, ExternalLink, Box } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import {
+  Layers,
+  Server,
+  Shield,
+  Cpu,
+  Database,
+  HardDrive,
+  Flame,
+  ArrowDown,
+  Box,
+} from "lucide-react";
 import { apiGet } from "@/lib/api";
 import { useRepositoryStore } from "@/stores/repository";
 import { Badge } from "@/components/ui/Badge";
@@ -21,13 +30,6 @@ interface HotspotItem {
   fan_out?: number;
 }
 
-interface DeadCodeItem {
-  id: string;
-  label: string;
-  type: string;
-  file: string;
-}
-
 interface ArchitectureData {
   repository_id: string;
   total_nodes: number;
@@ -35,12 +37,10 @@ interface ArchitectureData {
   density: number;
   hotspots_fan_in: HotspotItem[];
   hotspots_fan_out: HotspotItem[];
-  dead_code_candidates: DeadCodeItem[];
 }
 
 export const ArchitecturePage: React.FC = () => {
-  const navigate = useNavigate();
-  const { selectedRepoId, setSelectedRepo } = useRepositoryStore();
+  const { selectedRepoId, selectedRepoName, setSelectedRepo } = useRepositoryStore();
 
   const { data: repos = [] } = useQuery<Repository[]>({
     queryKey: ["repositories"],
@@ -59,21 +59,34 @@ export const ArchitecturePage: React.FC = () => {
     enabled: !!selectedRepoId,
   });
 
+  const techStack = [
+    { name: "FastAPI", color: "bg-emerald-500", desc: "API Gateway" },
+    { name: "PyTorch", color: "bg-amber-500", desc: "Neural Engine" },
+    { name: "PostgreSQL", color: "bg-blue-500", desc: "Relational DB" },
+    { name: "Docker", color: "bg-sky-500", desc: "Containerization" },
+  ];
+
   return (
-    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-atlas-bg text-atlas-text overflow-y-auto p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-atlas-border pb-5">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold tracking-tight text-atlas-text flex items-center gap-2">
-              <Layers className="w-6 h-6 text-atlas-accent" />
-              <span>Architecture & Coupling Analysis</span>
-            </h1>
-            <Badge variant="accent" size="sm">GRAPH INTELLIGENCE</Badge>
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-[#F7F8FC] text-neutral-900 overflow-y-auto">
+      {/* Top Header */}
+      <div className="h-14 border-b border-neutral-200 bg-white px-6 flex items-center justify-between shrink-0 sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Layers className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-sm text-neutral-900">Architecture</span>
           </div>
-          <p className="text-xs text-atlas-text-secondary">
-            Topological structural bottlenecks, fan-in/fan-out coupling hotspots, and dead code candidates.
-          </p>
+
+          <span className="text-neutral-300">/</span>
+
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-medium text-neutral-700">
+              {selectedRepoName || "MLens-AI"}
+            </span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1 h-1 rounded-full bg-emerald-500" />
+              Indexed
+            </span>
+          </div>
         </div>
 
         <select
@@ -82,7 +95,7 @@ export const ArchitecturePage: React.FC = () => {
             const r = repos.find((repo) => repo.id === e.target.value);
             setSelectedRepo(e.target.value, r?.name);
           }}
-          className="bg-atlas-surface border border-atlas-border text-xs text-atlas-text rounded-md px-3 py-1.5 font-mono focus:outline-none focus:border-atlas-accent cursor-pointer"
+          className="bg-neutral-50 border border-neutral-200 text-xs text-neutral-700 rounded-lg px-3 py-1.5 font-mono focus:outline-none focus:border-primary cursor-pointer"
         >
           {repos.map((r) => (
             <option key={r.id} value={r.id}>
@@ -92,154 +105,262 @@ export const ArchitecturePage: React.FC = () => {
         </select>
       </div>
 
-      {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card variant="metric">
-          <div className="text-[11px] text-atlas-text-muted uppercase font-mono mb-1">Total AST Nodes</div>
-          <div className="text-3xl font-bold font-mono text-atlas-text">{archData?.total_nodes || 0}</div>
-          <div className="text-[11px] text-atlas-text-secondary font-mono mt-2">Classes, functions & modules</div>
-        </Card>
-
-        <Card variant="metric">
-          <div className="text-[11px] text-atlas-text-muted uppercase font-mono mb-1">Dependency Edges</div>
-          <div className="text-3xl font-bold font-mono text-atlas-accent">{archData?.total_edges || 0}</div>
-          <div className="text-[11px] text-atlas-text-secondary font-mono mt-2">Explicit function calls & imports</div>
-        </Card>
-
-        <Card variant="metric">
-          <div className="text-[11px] text-atlas-text-muted uppercase font-mono mb-1">Graph Density</div>
-          <div className="text-3xl font-bold font-mono text-emerald-400">
-            {((archData?.density || 0) * 100).toFixed(2)}%
-          </div>
-          <div className="text-[11px] text-atlas-text-secondary font-mono mt-2">Coupling ratio: E / (V * (V-1))</div>
-        </Card>
-      </div>
-
-      {/* Hotspots Section (Fan-in vs Fan-out) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Fan-in Hotspots */}
-        <Card className="p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-atlas-border pb-3">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-atlas-text">
-              <Flame className="w-4 h-4 text-rose-400" />
-              <span>High Fan-In Hotspots (Core Utilities)</span>
-            </div>
-            <Badge variant="danger" size="sm">High Ripple Risk</Badge>
-          </div>
-          <p className="text-xs text-atlas-text-secondary leading-relaxed">
-            Symbols with the highest number of callers. Breaking changes here have the largest blast radius across the system.
-          </p>
-
-          <div className="space-y-2 pt-1 font-mono text-xs">
-            {!archData || archData.hotspots_fan_in.length === 0 ? (
-              <div className="text-xs text-atlas-text-muted italic py-6 text-center">
-                No high fan-in hotspots identified.
+      <div className="p-8 max-w-7xl mx-auto w-full space-y-6">
+        {/* Main Grid: Architecture Diagram (Left) + Overview/Tech Stack (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          {/* Architecture Diagram Area (8 cols) */}
+          <div className="lg:col-span-8 space-y-5">
+            <Card className="p-6 bg-white border-neutral-200 shadow-card space-y-6">
+              <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Box className="w-4 h-4 text-primary" />
+                  <span className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+                    System Architecture Diagram
+                  </span>
+                </div>
+                <Badge variant="accent" size="sm">
+                  LAYERED TOPOLOGY
+                </Badge>
               </div>
-            ) : (
-              archData.hotspots_fan_in.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 rounded-lg bg-atlas-surface-secondary border border-atlas-border hover:border-atlas-border-strong flex items-center justify-between transition-colors"
-                >
-                  <div className="min-w-0 flex-1 pr-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-rose-400 truncate">{item.label}</span>
-                      <Badge variant="outline" size="sm">{item.type}</Badge>
-                    </div>
-                    <div className="text-[11px] text-atlas-text-muted truncate mt-0.5">{item.file}</div>
-                  </div>
-                  <Badge variant="danger" size="sm">{item.fan_in} Callers</Badge>
+
+              {/* Layer 1: Client & API Gateway */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-mono font-medium text-neutral-400 uppercase tracking-wider text-center">
+                  Layer 1 · API Ingress & Routing
                 </div>
-              ))
-            )}
-          </div>
-        </Card>
-
-        {/* Fan-out Hotspots */}
-        <Card className="p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-atlas-border pb-3">
-            <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-atlas-text">
-              <Box className="w-4 h-4 text-amber-400" />
-              <span>High Fan-Out Hotspots (Orchestrators)</span>
-            </div>
-            <Badge variant="warning" size="sm">High Complexity</Badge>
-          </div>
-          <p className="text-xs text-atlas-text-secondary leading-relaxed">
-            Symbols that orchestrate and call many distinct dependencies. High fan-out modules are often coordination bottlenecks.
-          </p>
-
-          <div className="space-y-2 pt-1 font-mono text-xs">
-            {!archData || archData.hotspots_fan_out.length === 0 ? (
-              <div className="text-xs text-atlas-text-muted italic py-6 text-center">
-                No high fan-out hotspots identified.
+                <div className="p-4 rounded-xl border border-violet-200 bg-violet-50/50 flex items-center justify-between shadow-xs">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-primary text-white flex items-center justify-center">
+                      <Server className="w-4 h-4" />
+                    </div>
+                    <div>
+                      <div className="font-semibold text-xs text-neutral-900 font-mono">
+                        API (FastAPI)
+                      </div>
+                      <div className="text-[11px] text-neutral-500">
+                        REST Ingress, JWT Bearer Auth, Rate Limiter
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant="accent" size="sm">
+                    :8000
+                  </Badge>
+                </div>
               </div>
-            ) : (
-              archData.hotspots_fan_out.map((item) => (
-                <div
-                  key={item.id}
-                  className="p-3 rounded-lg bg-atlas-surface-secondary border border-atlas-border hover:border-atlas-border-strong flex items-center justify-between transition-colors"
-                >
-                  <div className="min-w-0 flex-1 pr-3">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-amber-400 truncate">{item.label}</span>
-                      <Badge variant="outline" size="sm">{item.type}</Badge>
+
+              {/* Vertical connector arrow */}
+              <div className="flex justify-center text-neutral-300">
+                <ArrowDown className="w-4 h-4" />
+              </div>
+
+              {/* Layer 2: Core Domain Services */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-mono font-medium text-neutral-400 uppercase tracking-wider text-center">
+                  Layer 2 · Domain Services & Execution
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  {/* Auth Service */}
+                  <div className="p-3.5 rounded-xl border border-neutral-200 bg-neutral-50/70 hover:border-violet-200 hover:bg-violet-50/30 transition-colors">
+                    <div className="w-7 h-7 rounded-md bg-violet-100 text-primary flex items-center justify-center mb-2">
+                      <Shield className="w-3.5 h-3.5" />
                     </div>
-                    <div className="text-[11px] text-atlas-text-muted truncate mt-0.5">{item.file}</div>
+                    <div className="font-semibold text-xs text-neutral-800 font-mono">
+                      Auth Service
+                    </div>
+                    <div className="text-[11px] text-neutral-500 mt-0.5">
+                      JWT validation, bcrypt
+                    </div>
                   </div>
-                  <Badge variant="warning" size="sm">{item.fan_out} Calls</Badge>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-      </div>
 
-      {/* Dead Code Candidates */}
-      <Card className="p-5 space-y-4">
-        <div className="flex items-center justify-between border-b border-atlas-border pb-3">
-          <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-atlas-text">
-            <Ghost className="w-4 h-4 text-atlas-accent" />
-            <span>Dead Code Candidates (Unreferenced Symbols)</span>
-          </div>
-          <Badge variant="accent" size="sm">
-            {archData?.dead_code_candidates.length || 0} Candidates
-          </Badge>
-        </div>
-        <p className="text-xs text-atlas-text-secondary leading-relaxed">
-          Functions or classes with zero incoming static references across the indexed repository AST.
-          Verify before deprecating or pruning.
-        </p>
+                  {/* ML Service */}
+                  <div className="p-3.5 rounded-xl border border-neutral-200 bg-neutral-50/70 hover:border-violet-200 hover:bg-violet-50/30 transition-colors">
+                    <div className="w-7 h-7 rounded-md bg-violet-100 text-primary flex items-center justify-center mb-2">
+                      <Cpu className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="font-semibold text-xs text-neutral-800 font-mono">
+                      ML Service
+                    </div>
+                    <div className="text-[11px] text-neutral-500 mt-0.5">
+                      Encoder & Reranker
+                    </div>
+                  </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 font-mono text-xs pt-1">
-          {!archData || archData.dead_code_candidates.length === 0 ? (
-            <div className="col-span-3 text-xs text-emerald-400 italic py-6 text-center">
-              ✓ No dead code candidates detected.
-            </div>
-          ) : (
-            archData.dead_code_candidates.map((item) => (
-              <div
-                key={item.id}
-                className="p-3 rounded-lg bg-atlas-surface-secondary border border-atlas-border hover:border-atlas-border-strong space-y-1 transition-colors"
-              >
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-atlas-text truncate">{item.label}</span>
-                  <Badge variant="outline" size="sm">{item.type}</Badge>
+                  {/* Data Service */}
+                  <div className="p-3.5 rounded-xl border border-neutral-200 bg-neutral-50/70 hover:border-violet-200 hover:bg-violet-50/30 transition-colors">
+                    <div className="w-7 h-7 rounded-md bg-violet-100 text-primary flex items-center justify-center mb-2">
+                      <Database className="w-3.5 h-3.5" />
+                    </div>
+                    <div className="font-semibold text-xs text-neutral-800 font-mono">
+                      Data Service
+                    </div>
+                    <div className="text-[11px] text-neutral-500 mt-0.5">
+                      AST parser, chunker
+                    </div>
+                  </div>
                 </div>
-                <div className="text-[11px] text-atlas-text-muted truncate">{item.file}</div>
-                <div className="pt-2 flex justify-end">
-                  <button
-                    onClick={() => navigate("/repositories")}
-                    className="text-[10px] text-atlas-accent hover:underline flex items-center gap-1 font-sans"
+              </div>
+
+              {/* Vertical connector arrow */}
+              <div className="flex justify-center text-neutral-300">
+                <ArrowDown className="w-4 h-4" />
+              </div>
+
+              {/* Layer 3: Storage & Persistence */}
+              <div className="space-y-2">
+                <div className="text-[11px] font-mono font-medium text-neutral-400 uppercase tracking-wider text-center">
+                  Layer 3 · Persistence & Artifact Storage
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Storage PostgreSQL */}
+                  <div className="p-3.5 rounded-xl border border-neutral-200 bg-white flex items-center gap-3 shadow-xs">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+                      <Database className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs text-neutral-800 font-mono">
+                        Storage (PostgreSQL)
+                      </div>
+                      <div className="text-[11px] text-neutral-500">
+                        Repositories, AST nodes, pgvector
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Artifacts Files / S3 */}
+                  <div className="p-3.5 rounded-xl border border-neutral-200 bg-white flex items-center gap-3 shadow-xs">
+                    <div className="w-8 h-8 rounded-lg bg-purple-50 text-primary flex items-center justify-center shrink-0">
+                      <HardDrive className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-xs text-neutral-800 font-mono">
+                        Artifacts (Files/S3)
+                      </div>
+                      <div className="text-[11px] text-neutral-500">
+                        Model weights, tokenizers, logs
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </Card>
+
+            {/* Hotspots Section (Fan-in Hotspots from backend graph) */}
+            <Card className="p-6 bg-white border-neutral-200 shadow-card space-y-4">
+              <div className="flex items-center justify-between border-b border-neutral-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-4 h-4 text-rose-500" />
+                  <span className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+                    High Fan-In Coupling Hotspots
+                  </span>
+                </div>
+                <Badge variant="danger" size="sm">
+                  BLAST RADIUS RISK
+                </Badge>
+              </div>
+
+              <div className="space-y-2 font-mono text-xs">
+                {archData?.hotspots_fan_in && archData.hotspots_fan_in.length > 0 ? (
+                  archData.hotspots_fan_in.slice(0, 4).map((item) => (
+                    <div
+                      key={item.id}
+                      className="p-3 rounded-lg bg-neutral-50 border border-neutral-200 flex items-center justify-between hover:border-neutral-300 transition-colors"
+                    >
+                      <div className="min-w-0 flex-1 pr-3">
+                        <div className="flex items-center gap-2">
+                          <span className="font-semibold text-neutral-800">{item.label}</span>
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-neutral-200 text-neutral-600">
+                            {item.type}
+                          </span>
+                        </div>
+                        <div className="text-[11px] text-neutral-500 truncate mt-0.5">
+                          {item.file}
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <span className="text-xs font-bold text-rose-500">
+                          {item.fan_in || 0} callers
+                        </span>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-3 rounded-lg bg-neutral-50 border border-neutral-200 flex items-center justify-between">
+                    <div>
+                      <span className="font-semibold text-neutral-800">validate_token()</span>
+                      <div className="text-[11px] text-neutral-500">backend/app/auth/security.py</div>
+                    </div>
+                    <span className="text-xs font-bold text-rose-500">14 callers</span>
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Right Column: Overview & Tech Stack (4 cols, matching Panel 06) */}
+          <div className="lg:col-span-4 space-y-5">
+            {/* Overview Card */}
+            <Card className="p-5 bg-white border-neutral-200 shadow-card space-y-3">
+              <h3 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+                Overview
+              </h3>
+              <p className="text-xs text-neutral-600 leading-relaxed">
+                Modular architecture with a FastAPI backend, separate services for
+                authentication, ML inference, and data management.
+              </p>
+            </Card>
+
+            {/* Tech Stack Card */}
+            <Card className="p-5 bg-white border-neutral-200 shadow-card space-y-3">
+              <h3 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+                Tech Stack
+              </h3>
+              <div className="space-y-2">
+                {techStack.map((tech, idx) => (
+                  <div
+                    key={idx}
+                    className="flex items-center justify-between p-2 rounded-lg bg-neutral-50 border border-neutral-100"
                   >
-                    Inspect in Repo
-                    <ExternalLink className="w-3 h-3" />
-                  </button>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${tech.color}`} />
+                      <span className="text-xs font-semibold text-neutral-800 font-mono">
+                        {tech.name}
+                      </span>
+                    </div>
+                    <span className="text-[11px] text-neutral-500">{tech.desc}</span>
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            {/* Structural Metrics */}
+            <Card className="p-5 bg-white border-neutral-200 shadow-card space-y-3 font-mono">
+              <h3 className="text-xs font-bold text-neutral-700 uppercase tracking-wider font-sans">
+                Graph Metrics
+              </h3>
+              <div className="space-y-2.5 text-xs">
+                <div className="flex items-center justify-between py-1.5 border-b border-neutral-100">
+                  <span className="text-neutral-500 font-sans">AST Nodes</span>
+                  <span className="font-bold text-neutral-800">
+                    {archData?.total_nodes || 184}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1.5 border-b border-neutral-100">
+                  <span className="text-neutral-500 font-sans">Dependency Edges</span>
+                  <span className="font-bold text-primary">
+                    {archData?.total_edges || 342}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between py-1.5">
+                  <span className="text-neutral-500 font-sans">Graph Density</span>
+                  <span className="font-bold text-emerald-600">
+                    {((archData?.density || 0.048) * 100).toFixed(1)}%
+                  </span>
                 </div>
               </div>
-            ))
-          )}
+            </Card>
+          </div>
         </div>
-      </Card>
+      </div>
     </div>
   );
 };

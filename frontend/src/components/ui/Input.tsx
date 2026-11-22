@@ -18,14 +18,14 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         {label && (
           <label
             htmlFor={inputId}
-            className="block text-xs font-medium text-atlas-text-secondary select-none"
+            className="block text-xs font-medium text-codexa-text-secondary select-none"
           >
             {label}
           </label>
         )}
         <div className="relative flex items-center">
           {leftIcon && (
-            <div className="absolute left-2.5 flex items-center pointer-events-none text-atlas-text-muted">
+            <div className="absolute left-3 flex items-center pointer-events-none text-codexa-text-muted">
               {leftIcon}
             </div>
           )}
@@ -33,29 +33,29 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
             ref={ref}
             id={inputId}
             className={cn(
-              "w-full h-8 px-3 bg-atlas-bg text-atlas-text placeholder:text-atlas-text-muted",
-              "text-xs font-sans rounded-md border border-atlas-border",
+              "w-full h-9 px-3.5 bg-codexa-surface text-codexa-text placeholder:text-codexa-text-muted",
+              "text-xs font-sans rounded-lg border border-codexa-border shadow-subtle",
               "transition-all duration-150 ease-out",
-              "hover:border-atlas-border-strong",
-              "focus:outline-none focus:border-atlas-accent focus:ring-1 focus:ring-atlas-accent",
-              "disabled:opacity-50 disabled:bg-atlas-surface disabled:cursor-not-allowed",
-              leftIcon && "pl-8",
-              rightIcon && "pr-8",
-              error && "border-rose-500 focus:border-rose-500 focus:ring-rose-500",
+              "hover:border-codexa-border-strong",
+              "focus:outline-none focus:border-codexa-primary focus:ring-2 focus:ring-codexa-primary/20",
+              "disabled:opacity-50 disabled:bg-codexa-bg-secondary disabled:cursor-not-allowed",
+              leftIcon && "pl-9",
+              rightIcon && "pr-9",
+              error && "border-codexa-error focus:border-codexa-error focus:ring-codexa-error/20",
               className
             )}
             {...props}
           />
           {rightIcon && (
-            <div className="absolute right-2.5 flex items-center text-atlas-text-muted">
+            <div className="absolute right-3 flex items-center text-codexa-text-muted">
               {rightIcon}
             </div>
           )}
         </div>
         {error ? (
-          <p className="text-[11px] text-rose-400 font-sans tracking-tight">{error}</p>
+          <p className="text-[11px] text-codexa-error font-sans tracking-tight">{error}</p>
         ) : helperText ? (
-          <p className="text-[11px] text-atlas-text-muted font-sans tracking-tight">
+          <p className="text-[11px] text-codexa-text-muted font-sans tracking-tight">
             {helperText}
           </p>
         ) : null}

@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 export interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: "information" | "metric" | "interactive" | "feature" | "content" | "elevated" | "default";
+  variant?: "default" | "metric" | "interactive" | "feature" | "content" | "elevated";
   interactive?: boolean;
 }
 
@@ -11,15 +11,14 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
     const isClickable = interactive || !!onClick || variant === "interactive";
 
     const variantStyles: Record<string, string> = {
-      default: "bg-atlas-surface border-atlas-border",
-      information: "bg-atlas-surface border-atlas-border/80",
-      metric: "bg-atlas-surface border-atlas-border p-5",
+      default: "bg-codexa-surface border-codexa-border shadow-card",
+      metric: "bg-codexa-surface border-codexa-border shadow-card p-5",
       interactive:
-        "bg-atlas-surface border-atlas-border hover:border-atlas-border-strong hover:bg-atlas-surface-secondary cursor-pointer transition-all duration-150 active:scale-[0.99]",
+        "bg-codexa-surface border-codexa-border shadow-card hover:border-codexa-primary/40 hover:shadow-medium cursor-pointer transition-all duration-150 active:scale-[0.99]",
       feature:
-        "bg-atlas-surface border-atlas-border hover:border-atlas-accent/40 transition-colors duration-150",
-      content: "bg-atlas-surface border-atlas-border",
-      elevated: "bg-atlas-elevated border-atlas-border-strong shadow-elevated",
+        "bg-codexa-surface border-codexa-border shadow-card hover:border-codexa-primary/30 hover:shadow-medium transition-all duration-150",
+      content: "bg-codexa-surface border-codexa-border shadow-card",
+      elevated: "bg-codexa-surface border-codexa-border shadow-elevated",
     };
 
     return (
@@ -27,11 +26,11 @@ export const Card = React.forwardRef<HTMLDivElement, CardProps>(
         ref={ref}
         onClick={onClick}
         className={cn(
-          "rounded-lg border text-atlas-text transition-colors duration-150",
+          "rounded-xl border text-codexa-text transition-colors duration-150",
           variantStyles[variant],
           isClickable &&
             variant !== "interactive" &&
-            "cursor-pointer hover:border-atlas-border-strong hover:bg-atlas-surface-secondary active:scale-[0.99]",
+            "cursor-pointer hover:border-codexa-primary/40 hover:shadow-medium active:scale-[0.99]",
           className
         )}
         {...props}
@@ -51,7 +50,7 @@ export function CardHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn("flex items-center justify-between p-4 border-b border-atlas-border/60", className)}
+      className={cn("flex items-center justify-between p-5 border-b border-codexa-border/60", className)}
       {...props}
     >
       {children}
@@ -66,7 +65,7 @@ export function CardTitle({
 }: React.HTMLAttributes<HTMLHeadingElement>) {
   return (
     <h3
-      className={cn("text-xs font-semibold uppercase tracking-wider text-atlas-text-secondary", className)}
+      className={cn("text-xs font-semibold uppercase tracking-wider text-codexa-text-secondary font-mono", className)}
       {...props}
     >
       {children}
@@ -80,7 +79,7 @@ export function CardContent({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("p-4", className)} {...props}>
+    <div className={cn("p-5", className)} {...props}>
       {children}
     </div>
   );

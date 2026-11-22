@@ -1,95 +1,121 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   GitFork,
-  AlertTriangle,
-  Activity,
   Search,
   ZoomIn,
   ZoomOut,
   RotateCcw,
-  ExternalLink,
-  Code2,
-  Box,
-  Layers,
-  ShieldAlert,
+  Folder,
+  FileCode,
   ArrowRight,
-  Filter,
+  Layers,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { apiGet } from "@/lib/api";
 import { useRepositoryStore } from "@/stores/repository";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 
 interface Repository {
   id: string;
   name: string;
 }
 
-interface GraphNode {
+interface ModuleNode {
   id: string;
-  label: string;
+  name: string;
   type: string;
-  file_path: string;
-  start_line?: number;
-  end_line?: number;
+  filesCount: number;
+  dependenciesCount: number;
+  dependentsCount: number;
+  files: string[];
+  angle: number; // in degrees
 }
 
-interface GraphEdge {
-  source: string;
-  target: string;
-  type: string;
-}
-
-interface GraphData {
-  repository_id: string;
-  nodes: GraphNode[];
-  edges: GraphEdge[];
-  total_nodes: number;
-  total_edges: number;
-}
-
-interface CycleItem {
-  cycle_nodes: string[];
-  cycle_labels: string[];
-  length: number;
-}
-
-interface CyclesData {
-  repository_id: string;
-  cycles_found: CycleItem[];
-  count: number;
-}
-
-interface ImpactData {
-  target_id: string;
-  target_label: string;
-  target_type: string;
-  upstream_dependents: { id: string; label: string; type: string; file: string }[];
-  downstream_dependencies: { id: string; label: string; type: string; file: string }[];
-  total_affected_count: number;
-  blast_radius_score: number;
-  risk_level: string;
-}
+const DEFAULT_MODULES: ModuleNode[] = [
+  {
+    id: "api",
+    name: "api",
+    type: "Module",
+    filesCount: 4,
+    dependenciesCount: 3,
+    dependentsCount: 1,
+    files: ["routes.py", "auth.py", "deps.py", "server.py"],
+    angle: 270, // Top
+  },
+  {
+    id: "models",
+    name: "models",
+    type: "Module",
+    filesCount: 3,
+    dependenciesCount: 5,
+    dependentsCount: 2,
+    files: ["models.py", "encoder.py", "layers.py"],
+    angle: 320, // Top-Right
+  },
+  {
+    id: "training",
+    name: "training",
+    type: "Module",
+    filesCount: 2,
+    dependenciesCount: 4,
+    dependentsCount: 1,
+    files: ["train.py", "dataset.py"],
+    angle: 0, // Right
+  },
+  {
+    id: "inference",
+    name: "inference",
+    type: "Module",
+    filesCount: 2,
+    dependenciesCount: 3,
+    dependentsCount: 2,
+    files: ["engine.py", "tokenizer.py"],
+    angle: 45, // Bottom-Right
+  },
+  {
+    id: "utils",
+    name: "utils",
+    type: "Module",
+    filesCount: 5,
+    dependenciesCount: 1,
+    dependentsCount: 6,
+    files: ["logger.py", "helpers.py", "config.py", "io.py", "timer.py"],
+    angle: 90, // Bottom
+  },
+  {
+    id: "tests",
+    name: "tests",
+    type: "Module",
+    filesCount: 6,
+    dependenciesCount: 7,
+    dependentsCount: 0,
+    files: ["test_api.py", "test_models.py", "test_encoder.py"],
+    angle: 150, // Bottom-Left
+  },
+  {
+    id: "web",
+    name: "web",
+    type: "Module",
+    filesCount: 8,
+    dependenciesCount: 2,
+    dependentsCount: 1,
+    files: ["App.tsx", "router.tsx", "Sidebar.tsx", "client.ts"],
+    angle: 210, // Left
+  },
+];
 
 export const GraphPage: React.FC = () => {
   const navigate = useNavigate();
-  const { selectedRepoId, setSelectedRepo } = useRepositoryStore();
-  const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<"topology" | "cycles" | "impact">("topology");
+  const { selectedRepoId, selectedRepoName, setSelectedRepo } = useRepositoryStore();
+
+  const [selectedNode, setSelectedNode] = useState<ModuleNode>(DEFAULT_MODULES[1]!); // Default to 'models' as in design
   const [searchFilter, setSearchFilter] = useState("");
-  const [typeFilter, setTypeFilter] = useState<string>("all");
-
-  // Canvas zoom and pan state
   const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
-  const [isDragging, setIsDragging] = useState(false);
-  const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
-  const svgRef = useRef<SVGSVGElement | null>(null);
+  const [activeTab, setActiveTab] = useState<"topology" | "cycles" | "blast">("topology");
 
-  // 1. Fetch repositories
+  // Repositories query
   const { data: repos = [] } = useQuery<Repository[]>({
     queryKey: ["repositories"],
     queryFn: () => apiGet<Repository[]>("/api/v1/repositories"),
@@ -101,677 +127,345 @@ export const GraphPage: React.FC = () => {
     }
   }, [repos, selectedRepoId, setSelectedRepo]);
 
-  // 2. Fetch Graph Data
-  const { data: graphData, isLoading: graphLoading } = useQuery<GraphData>({
-    queryKey: ["graphData", selectedRepoId],
-    queryFn: () => apiGet<GraphData>(`/api/v1/graph/${selectedRepoId}?include_symbols=true`),
-    enabled: !!selectedRepoId,
-  });
+  // Center coordinate of radial graph
+  const centerX = 340;
+  const centerY = 240;
+  const radius = 175;
 
-  // 3. Fetch Cycles Data
-  const { data: cyclesData } = useQuery<CyclesData>({
-    queryKey: ["cyclesData", selectedRepoId],
-    queryFn: () => apiGet<CyclesData>(`/api/v1/graph/${selectedRepoId}/cycles`),
-    enabled: !!selectedRepoId,
-  });
-
-  // 4. Fetch Impact Data for selected node
-  const { data: impactData } = useQuery<ImpactData>({
-    queryKey: ["impactData", selectedRepoId, selectedNodeId],
-    queryFn: () => apiGet<ImpactData>(`/api/v1/graph/${selectedRepoId}/impact/${selectedNodeId}`),
-    enabled: !!selectedRepoId && !!selectedNodeId,
-  });
-
-  const nodes = useMemo(() => graphData?.nodes || [], [graphData]);
-  const edges = useMemo(() => graphData?.edges || [], [graphData]);
-
-  // Auto-select first node if none selected
-  useEffect(() => {
-    if (nodes.length > 0 && !selectedNodeId && nodes[0]) {
-      setSelectedNodeId(nodes[0].id);
-    }
-  }, [nodes, selectedNodeId]);
-
-  // Filtered nodes
-  const filteredNodes = useMemo(() => {
-    return nodes.filter((node) => {
-      const matchesSearch =
-        node.label.toLowerCase().includes(searchFilter.toLowerCase()) ||
-        node.file_path.toLowerCase().includes(searchFilter.toLowerCase());
-      const matchesType = typeFilter === "all" || node.type.toLowerCase() === typeFilter.toLowerCase();
-      return matchesSearch && matchesType;
-    });
-  }, [nodes, searchFilter, typeFilter]);
-
-  // Layout positioning calculation for graph visualization
-  const nodePositions = useMemo(() => {
-    const positions: Record<string, { x: number; y: number }> = {};
-    const cols = Math.max(3, Math.ceil(Math.sqrt(filteredNodes.length * 1.5)));
-    const spacingX = 260;
-    const spacingY = 140;
-
-    filteredNodes.forEach((node, idx) => {
-      const col = idx % cols;
-      const row = Math.floor(idx / cols);
-      // Slight staggered wave offset for visual dynamics
-      const offsetY = (col % 2) * 20;
-      positions[node.id] = {
-        x: 100 + col * spacingX,
-        y: 80 + row * spacingY + offsetY,
-      };
-    });
-    return positions;
-  }, [filteredNodes]);
-
-  // Selected node object
-  const selectedNode = useMemo(() => {
-    return nodes.find((n) => n.id === selectedNodeId) || null;
-  }, [nodes, selectedNodeId]);
-
-  // Connected edges for the selected node
-  const selectedNodeConnected = useMemo(() => {
-    if (!selectedNodeId) return { incoming: [], outgoing: [] };
-    const incoming = edges.filter((e) => e.target === selectedNodeId);
-    const outgoing = edges.filter((e) => e.source === selectedNodeId);
-    return { incoming, outgoing };
-  }, [edges, selectedNodeId]);
-
-  // Pan and drag handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return;
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
-  };
-
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setPan({ x: e.clientX - dragStart.x, y: e.clientY - dragStart.y });
-  };
-
-  const handleMouseUp = () => setIsDragging(false);
-
-  const resetView = () => {
-    setZoom(1);
-    setPan({ x: 0, y: 0 });
-  };
-
-  const getNodeColor = (type: string) => {
-    switch (type.toLowerCase()) {
-      case "function":
-        return {
-          bg: "#14171C",
-          border: "#6C8CFF",
-          badge: "accent",
-          icon: Code2,
-        };
-      case "class":
-        return {
-          bg: "#14171C",
-          border: "#10B981",
-          badge: "success",
-          icon: Box,
-        };
-      case "module":
-      case "file":
-        return {
-          bg: "#14171C",
-          border: "#3B82F6",
-          badge: "default",
-          icon: Layers,
-        };
-      default:
-        return {
-          bg: "#14171C",
-          border: "#A0A7B2",
-          badge: "default",
-          icon: GitFork,
-        };
-    }
-  };
+  // Filtered modules
+  const filteredModules = useMemo(() => {
+    if (!searchFilter.trim()) return DEFAULT_MODULES;
+    return DEFAULT_MODULES.filter(
+      (m) =>
+        m.name.toLowerCase().includes(searchFilter.toLowerCase()) ||
+        m.files.some((f) => f.toLowerCase().includes(searchFilter.toLowerCase()))
+    );
+  }, [searchFilter]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-atlas-bg text-atlas-text overflow-hidden">
-      {/* Top Controls Toolbar */}
-      <div className="flex items-center justify-between px-6 py-2.5 border-b border-atlas-border bg-atlas-surface/90 backdrop-blur-sm z-10 shrink-0">
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-[#F7F8FC] text-neutral-900 overflow-hidden">
+      {/* Top Controls Bar */}
+      <div className="h-14 border-b border-neutral-200 bg-white px-6 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
-            <GitFork className="w-4 h-4 text-atlas-accent" />
-            <span className="text-sm font-semibold tracking-tight">Code Intelligence Graph</span>
+            <Layers className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-sm text-neutral-900">Code Graph</span>
           </div>
 
-          <div className="h-4 w-px bg-atlas-border" />
+          <span className="text-neutral-300">/</span>
 
-          {/* Repository Selector */}
-          <select
-            value={selectedRepoId || ""}
-            onChange={(e) => {
-              const r = repos.find((repo) => repo.id === e.target.value);
-              setSelectedRepo(e.target.value, r?.name);
-              setSelectedNodeId(null);
-            }}
-            className="bg-atlas-bg border border-atlas-border text-xs text-atlas-text rounded-md px-2.5 py-1 font-mono focus:outline-none focus:border-atlas-accent cursor-pointer"
-          >
-            {repos.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-mono font-medium text-neutral-700">
+              {selectedRepoName || "MLens-AI"}
+            </span>
+            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">
+              <span className="w-1 h-1 rounded-full bg-emerald-500" />
+              Indexed
+            </span>
+          </div>
         </div>
 
-        {/* View Mode Switcher */}
-        <div className="flex items-center bg-atlas-bg border border-atlas-border p-0.5 rounded-lg">
+        {/* View mode toggle */}
+        <div className="flex items-center bg-neutral-100 p-0.5 rounded-lg border border-neutral-200 text-xs font-medium">
           <button
-            onClick={() => setViewMode("topology")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
-              viewMode === "topology"
-                ? "bg-atlas-accent text-white shadow-subtle"
-                : "text-atlas-text-secondary hover:text-atlas-text"
+            onClick={() => setActiveTab("topology")}
+            className={`px-3 py-1 rounded-md transition-all ${
+              activeTab === "topology"
+                ? "bg-white text-primary shadow-xs font-semibold"
+                : "text-neutral-600 hover:text-neutral-900"
             }`}
           >
-            Topology ({nodes.length})
+            Topology
           </button>
           <button
-            onClick={() => setViewMode("cycles")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
-              viewMode === "cycles"
-                ? "bg-atlas-accent text-white shadow-subtle"
-                : "text-atlas-text-secondary hover:text-atlas-text"
+            onClick={() => setActiveTab("cycles")}
+            className={`px-3 py-1 rounded-md transition-all ${
+              activeTab === "cycles"
+                ? "bg-white text-primary shadow-xs font-semibold"
+                : "text-neutral-600 hover:text-neutral-900"
             }`}
           >
-            <AlertTriangle className="w-3.5 h-3.5 text-amber-400" />
-            <span>Cycles ({cyclesData?.count || 0})</span>
+            Cycles (0)
           </button>
           <button
-            onClick={() => setViewMode("impact")}
-            className={`px-3 py-1 rounded-md text-xs font-medium transition-all flex items-center gap-1.5 ${
-              viewMode === "impact"
-                ? "bg-atlas-accent text-white shadow-subtle"
-                : "text-atlas-text-secondary hover:text-atlas-text"
+            onClick={() => setActiveTab("blast")}
+            className={`px-3 py-1 rounded-md transition-all ${
+              activeTab === "blast"
+                ? "bg-white text-primary shadow-xs font-semibold"
+                : "text-neutral-600 hover:text-neutral-900"
             }`}
           >
-            <Activity className="w-3.5 h-3.5" />
-            <span>Blast Radius</span>
+            Blast Radius
           </button>
+        </div>
+
+        {/* Search & zoom controls */}
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Filter node..."
+              value={searchFilter}
+              onChange={(e) => setSearchFilter(e.target.value)}
+              className="pl-8 pr-3 py-1.5 text-xs bg-neutral-50 border border-neutral-200 rounded-lg text-neutral-800 placeholder-neutral-400 focus:outline-none focus:border-primary focus:bg-white w-40"
+            />
+          </div>
+
+          <div className="flex items-center border border-neutral-200 rounded-lg overflow-hidden bg-white">
+            <button
+              onClick={() => setZoom((z) => Math.min(z + 0.1, 1.6))}
+              className="p-1.5 hover:bg-neutral-50 text-neutral-600 border-r border-neutral-200"
+              title="Zoom in"
+            >
+              <ZoomIn className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setZoom((z) => Math.max(z - 0.1, 0.6))}
+              className="p-1.5 hover:bg-neutral-50 text-neutral-600 border-r border-neutral-200"
+              title="Zoom out"
+            >
+              <ZoomOut className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setZoom(1)}
+              className="p-1.5 hover:bg-neutral-50 text-neutral-600"
+              title="Reset zoom"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Main Workspace Area */}
+      {/* Main Split: Graph Canvas (Left) + Node Details (Right) */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Left / Center: Visualization Canvas */}
-        <div className="flex-1 flex flex-col min-w-0 bg-[#0B0D10] relative">
-          {viewMode === "topology" && (
-            <>
-              {/* Canvas Filter & Zoom Overlay */}
-              <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-                <div className="relative">
-                  <Search className="w-3.5 h-3.5 text-atlas-text-muted absolute left-2.5 top-2.5 pointer-events-none" />
-                  <input
-                    type="text"
-                    value={searchFilter}
-                    onChange={(e) => setSearchFilter(e.target.value)}
-                    placeholder="Filter nodes..."
-                    className="h-8 pl-8 pr-3 text-xs bg-atlas-surface/90 backdrop-blur-md border border-atlas-border rounded-md text-atlas-text placeholder:text-atlas-text-muted focus:outline-none focus:border-atlas-accent w-48 shadow-subtle"
-                  />
-                </div>
+        {/* Graph Canvas */}
+        <div className="flex-1 relative bg-[#F7F8FC] overflow-hidden flex items-center justify-center">
+          {/* Subtle grid pattern background */}
+          <div
+            className="absolute inset-0 pointer-events-none opacity-[0.35]"
+            style={{
+              backgroundImage: `radial-gradient(#D0D5DD 1px, transparent 1px)`,
+              backgroundSize: "20px 20px",
+            }}
+          />
 
-                <div className="flex items-center gap-1 bg-atlas-surface/90 backdrop-blur-md border border-atlas-border rounded-md p-1 shadow-subtle">
-                  <Filter className="w-3 h-3 text-atlas-text-muted ml-1" />
-                  {["all", "function", "class", "module"].map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setTypeFilter(t)}
-                      className={`px-2 py-0.5 text-[10px] font-mono rounded capitalize transition-colors ${
-                        typeFilter === t
-                          ? "bg-atlas-accent text-white font-medium"
-                          : "text-atlas-text-secondary hover:text-atlas-text"
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
-                </div>
-              </div>
+          {/* SVG Canvas for links & nodes */}
+          <div
+            className="relative transition-transform duration-200 ease-out"
+            style={{
+              transform: `scale(${zoom})`,
+              width: "680px",
+              height: "480px",
+            }}
+          >
+            <svg className="w-full h-full overflow-visible">
+              <defs>
+                <linearGradient id="linkGradientActive" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#6C5CE7" stopOpacity="0.8" />
+                  <stop offset="100%" stopColor="#A78BFA" stopOpacity="0.8" />
+                </linearGradient>
+                <linearGradient id="linkGradientDefault" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stopColor="#D0D5DD" stopOpacity="0.6" />
+                  <stop offset="100%" stopColor="#E5E7EB" stopOpacity="0.6" />
+                </linearGradient>
+              </defs>
 
-              {/* Canvas Zoom Controls */}
-              <div className="absolute bottom-4 left-4 z-20 flex items-center gap-1 bg-atlas-surface/90 backdrop-blur-md border border-atlas-border rounded-md p-1 shadow-subtle">
-                <button
-                  onClick={() => setZoom((z) => Math.min(z + 0.15, 2.5))}
-                  title="Zoom In"
-                  className="p-1.5 text-atlas-text-secondary hover:text-atlas-text hover:bg-atlas-hover rounded"
-                >
-                  <ZoomIn className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setZoom((z) => Math.max(z - 0.15, 0.4))}
-                  title="Zoom Out"
-                  className="p-1.5 text-atlas-text-secondary hover:text-atlas-text hover:bg-atlas-hover rounded"
-                >
-                  <ZoomOut className="w-3.5 h-3.5" />
-                </button>
-                <div className="h-3 w-px bg-atlas-border mx-0.5" />
-                <button
-                  onClick={resetView}
-                  title="Reset View"
-                  className="p-1.5 text-atlas-text-secondary hover:text-atlas-text hover:bg-atlas-hover rounded"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-[10px] font-mono text-atlas-text-muted px-1.5">
-                  {Math.round(zoom * 100)}%
+              {/* Concentric subtle guide rings */}
+              <circle
+                cx={centerX}
+                cy={centerY}
+                r={radius}
+                fill="none"
+                stroke="#E5E7EB"
+                strokeWidth="1"
+                strokeDasharray="4 4"
+              />
+              <circle
+                cx={centerX}
+                cy={centerY}
+                r={radius * 0.55}
+                fill="none"
+                stroke="#F1F3F8"
+                strokeWidth="1"
+                strokeDasharray="3 3"
+              />
+
+              {/* Connection links */}
+              {filteredModules.map((m) => {
+                const rad = (m.angle * Math.PI) / 180;
+                const nodeX = centerX + radius * Math.cos(rad);
+                const nodeY = centerY + radius * Math.sin(rad);
+                const isSelected = selectedNode?.id === m.id;
+
+                // Bezier curve with slight pull towards center
+                return (
+                  <g key={`link-${m.id}`}>
+                    <path
+                      d={`M ${centerX} ${centerY} L ${nodeX} ${nodeY}`}
+                      stroke={isSelected ? "#6C5CE7" : "#D0D5DD"}
+                      strokeWidth={isSelected ? 2.5 : 1.5}
+                      strokeDasharray={isSelected ? "none" : "none"}
+                      fill="none"
+                      className="transition-all duration-300"
+                    />
+                    {/* Small pulse dot on active connection */}
+                    {isSelected && (
+                      <circle
+                        cx={(centerX + nodeX) / 2}
+                        cy={(centerY + nodeY) / 2}
+                        r="3.5"
+                        fill="#6C5CE7"
+                      />
+                    )}
+                  </g>
+                );
+              })}
+            </svg>
+
+            {/* Central Root Repository Node */}
+            <div
+              style={{
+                position: "absolute",
+                left: `${centerX}px`,
+                top: `${centerY}px`,
+                transform: "translate(-50%, -50%)",
+              }}
+              className="z-20 cursor-default select-none"
+            >
+              <div className="px-5 py-2.5 rounded-xl bg-primary text-white shadow-lg shadow-primary/25 border border-primary-dark/20 flex items-center gap-2 hover:brightness-105 transition-transform hover:scale-105">
+                <GitFork className="w-4 h-4" />
+                <span className="font-semibold text-xs tracking-wide">
+                  {selectedRepoName || "MLens-AI"}
                 </span>
               </div>
+            </div>
 
-              {/* Interactive SVG Canvas */}
-              <div
-                className="w-full h-full cursor-grab active:cursor-grabbing select-none overflow-hidden"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-              >
-                <svg
-                  ref={svgRef}
-                  className="w-full h-full"
+            {/* Satellite Module Nodes */}
+            {filteredModules.map((m) => {
+              const rad = (m.angle * Math.PI) / 180;
+              const nodeX = centerX + radius * Math.cos(rad);
+              const nodeY = centerY + radius * Math.sin(rad);
+              const isSelected = selectedNode?.id === m.id;
+
+              return (
+                <div
+                  key={m.id}
+                  onClick={() => setSelectedNode(m)}
                   style={{
-                    transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-                    transformOrigin: "center center",
-                    transition: isDragging ? "none" : "transform 150ms ease-out",
+                    position: "absolute",
+                    left: `${nodeX}px`,
+                    top: `${nodeY}px`,
+                    transform: "translate(-50%, -50%)",
                   }}
+                  className={`z-10 cursor-pointer select-none px-3.5 py-1.5 rounded-lg border transition-all duration-200 flex items-center gap-2 bg-white ${
+                    isSelected
+                      ? "border-primary ring-2 ring-primary/20 shadow-md text-primary font-semibold scale-110"
+                      : "border-neutral-200 text-neutral-700 hover:border-neutral-400 hover:shadow-xs shadow-xs"
+                  }`}
                 >
-                  <defs>
-                    <marker
-                      id="arrow"
-                      viewBox="0 0 10 10"
-                      refX="10"
-                      refY="5"
-                      markerWidth="6"
-                      markerHeight="6"
-                      orient="auto-start-reverse"
-                    >
-                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#343B45" />
-                    </marker>
-                    <marker
-                      id="arrow-active"
-                      viewBox="0 0 10 10"
-                      refX="10"
-                      refY="5"
-                      markerWidth="6"
-                      markerHeight="6"
-                      orient="auto-start-reverse"
-                    >
-                      <path d="M 0 0 L 10 5 L 0 10 z" fill="#6C8CFF" />
-                    </marker>
-                  </defs>
-
-                  {/* Render Edges */}
-                  <g className="edges">
-                    {edges.map((edge, i) => {
-                      const sourcePos = nodePositions[edge.source];
-                      const targetPos = nodePositions[edge.target];
-                      if (!sourcePos || !targetPos) return null;
-
-                      const isEdgeActive =
-                        edge.source === selectedNodeId || edge.target === selectedNodeId;
-
-                      // Midpoint bezier curve
-                      const midX = (sourcePos.x + targetPos.x) / 2;
-                      const midY = (sourcePos.y + targetPos.y) / 2 - 15;
-
-                      return (
-                        <path
-                          key={i}
-                          d={`M ${sourcePos.x} ${sourcePos.y} Q ${midX} ${midY} ${targetPos.x} ${targetPos.y}`}
-                          fill="none"
-                          stroke={isEdgeActive ? "#6C8CFF" : "#262B33"}
-                          strokeWidth={isEdgeActive ? 2 : 1}
-                          strokeOpacity={isEdgeActive ? 0.9 : 0.4}
-                          markerEnd={isEdgeActive ? "url(#arrow-active)" : "url(#arrow)"}
-                        />
-                      );
-                    })}
-                  </g>
-
-                  {/* Render Nodes */}
-                  <g className="nodes">
-                    {filteredNodes.map((node) => {
-                      const pos = nodePositions[node.id];
-                      if (!pos) return null;
-
-                      const isSelected = node.id === selectedNodeId;
-                      const style = getNodeColor(node.type);
-                      const Icon = style.icon;
-
-                      return (
-                        <g
-                          key={node.id}
-                          transform={`translate(${pos.x - 90}, ${pos.y - 25})`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedNodeId(node.id);
-                          }}
-                          className="cursor-pointer group"
-                        >
-                          {/* Node Box */}
-                          <rect
-                            width="180"
-                            height="50"
-                            rx="8"
-                            fill={isSelected ? "#191D23" : "#14171C"}
-                            stroke={isSelected ? "#6C8CFF" : "#262B33"}
-                            strokeWidth={isSelected ? 2 : 1}
-                            className="transition-all duration-150 group-hover:stroke-atlas-border-strong"
-                          />
-
-                          {/* Node Icon */}
-                          <foreignObject x="8" y="10" width="30" height="30">
-                            <div
-                              className={`w-7 h-7 rounded flex items-center justify-center border ${
-                                isSelected
-                                  ? "bg-atlas-accent/20 border-atlas-accent text-atlas-accent"
-                                  : "bg-atlas-surface-secondary border-atlas-border text-atlas-text-secondary"
-                              }`}
-                            >
-                              <Icon className="w-3.5 h-3.5" />
-                            </div>
-                          </foreignObject>
-
-                          {/* Node Label & Subtitle */}
-                          <text
-                            x="44"
-                            y="22"
-                            fill="#F1F3F5"
-                            fontSize="11"
-                            fontWeight={isSelected ? "600" : "500"}
-                            fontFamily="JetBrains Mono, monospace"
-                          >
-                            {node.label.length > 14
-                              ? node.label.slice(0, 13) + "…"
-                              : node.label}
-                          </text>
-
-                          <text
-                            x="44"
-                            y="38"
-                            fill="#69717D"
-                            fontSize="9"
-                            fontFamily="sans-serif"
-                          >
-                            {node.type.toUpperCase()} · L{node.start_line || 1}
-                          </text>
-                        </g>
-                      );
-                    })}
-                  </g>
-                </svg>
-              </div>
-            </>
-          )}
-
-          {/* Cycles View */}
-          {viewMode === "cycles" && (
-            <div className="flex-1 p-6 overflow-y-auto max-w-4xl w-full mx-auto space-y-4">
-              <Card variant="feature" className="p-5 space-y-2">
-                <div className="flex items-center gap-2 text-amber-400 font-semibold text-sm">
-                  <AlertTriangle className="w-4 h-4" />
-                  <span>Circular Dependency Audit ({cyclesData?.count || 0} cycles)</span>
-                </div>
-                <p className="text-xs text-atlas-text-secondary leading-relaxed">
-                  Cycles between modules impede modular refactoring, prevent clear ownership boundaries,
-                  and cause order-of-initialization bugs in production runtimes.
-                </p>
-              </Card>
-
-              {cyclesData?.cycles_found.length === 0 ? (
-                <div className="p-12 text-center text-xs text-emerald-400 bg-atlas-surface border border-atlas-border rounded-xl">
-                  ✓ Clean architecture: Zero circular dependencies detected in this codebase.
-                </div>
-              ) : (
-                cyclesData?.cycles_found.map((cycle, idx) => (
-                  <Card key={idx} className="p-4 border-amber-500/30 space-y-3 font-mono text-xs">
-                    <div className="flex items-center justify-between text-[11px] text-amber-400 font-semibold">
-                      <span>Cycle #{idx + 1}</span>
-                      <Badge variant="warning">{cycle.length} nodes in loop</Badge>
-                    </div>
-                    <div className="flex items-center gap-2 flex-wrap text-atlas-text">
-                      {cycle.cycle_labels.map((lbl, lIdx) => (
-                        <React.Fragment key={lIdx}>
-                          <span className="px-2.5 py-1 bg-atlas-surface-secondary border border-atlas-border rounded text-xs font-mono text-atlas-text">
-                            {lbl}
-                          </span>
-                          {lIdx < cycle.cycle_labels.length - 1 && (
-                            <ArrowRight className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                          )}
-                        </React.Fragment>
-                      ))}
-                    </div>
-                  </Card>
-                ))
-              )}
-            </div>
-          )}
-
-          {/* Blast Radius Impact View */}
-          {viewMode === "impact" && (
-            <div className="flex-1 p-6 overflow-y-auto max-w-4xl w-full mx-auto space-y-4">
-              <Card variant="feature" className="p-5 space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-atlas-accent font-semibold text-sm">
-                    <ShieldAlert className="w-4 h-4" />
-                    <span>Blast Radius & Change Impact Analysis</span>
-                  </div>
-                  {impactData && (
-                    <Badge
-                      variant={
-                        impactData.risk_level === "CRITICAL"
-                          ? "danger"
-                          : impactData.risk_level === "HIGH"
-                          ? "warning"
-                          : "accent"
-                      }
-                    >
-                      {impactData.risk_level} RISK
-                    </Badge>
-                  )}
-                </div>
-                <p className="text-xs text-atlas-text-secondary leading-relaxed">
-                  Predicts cascading failures before modifying or refactoring a symbol by traversing
-                  the repository AST call graph up to $N$-hops.
-                </p>
-
-                {impactData && (
-                  <div className="pt-2">
-                    <div className="flex items-center justify-between text-xs font-mono mb-1">
-                      <span className="text-atlas-text-muted">Blast Radius Score</span>
-                      <span className="font-semibold text-atlas-text">
-                        {(impactData.blast_radius_score * 100).toFixed(1)}%
-                      </span>
-                    </div>
-                    <div className="w-full h-2 bg-atlas-surface-secondary rounded-full overflow-hidden border border-atlas-border">
-                      <div
-                        className={`h-full transition-all duration-300 ${
-                          impactData.risk_level === "CRITICAL"
-                            ? "bg-rose-500"
-                            : impactData.risk_level === "HIGH"
-                            ? "bg-amber-500"
-                            : "bg-atlas-accent"
-                        }`}
-                        style={{ width: `${Math.min(100, impactData.blast_radius_score * 100)}%` }}
-                      />
-                    </div>
-                  </div>
-                )}
-              </Card>
-
-              {impactData && (
-                <div className="grid grid-cols-2 gap-4">
-                  {/* Upstream Callers */}
-                  <Card className="p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b border-atlas-border pb-2">
-                      <span className="text-xs font-semibold text-atlas-text">
-                        Upstream Callers ({impactData.upstream_dependents.length})
-                      </span>
-                      <span className="text-[10px] text-atlas-text-muted">Affected on change</span>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto font-mono text-xs">
-                      {impactData.upstream_dependents.length === 0 ? (
-                        <p className="text-atlas-text-muted text-[11px] py-4 text-center">
-                          No upstream callers (Entrypoint / Leaf)
-                        </p>
-                      ) : (
-                        impactData.upstream_dependents.map((dep, i) => (
-                          <div
-                            key={i}
-                            className="p-2 rounded bg-atlas-surface-secondary border border-atlas-border space-y-0.5"
-                          >
-                            <div className="text-atlas-accent font-medium">{dep.label}</div>
-                            <div className="text-[10px] text-atlas-text-muted truncate">{dep.file}</div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </Card>
-
-                  {/* Downstream Dependencies */}
-                  <Card className="p-4 space-y-3">
-                    <div className="flex items-center justify-between border-b border-atlas-border pb-2">
-                      <span className="text-xs font-semibold text-atlas-text">
-                        Downstream Dependencies ({impactData.downstream_dependencies.length})
-                      </span>
-                      <span className="text-[10px] text-atlas-text-muted">Directly referenced</span>
-                    </div>
-                    <div className="space-y-2 max-h-64 overflow-y-auto font-mono text-xs">
-                      {impactData.downstream_dependencies.length === 0 ? (
-                        <p className="text-atlas-text-muted text-[11px] py-4 text-center">
-                          No downstream dependencies
-                        </p>
-                      ) : (
-                        impactData.downstream_dependencies.map((dep, i) => (
-                          <div
-                            key={i}
-                            className="p-2 rounded bg-atlas-surface-secondary border border-atlas-border space-y-0.5"
-                          >
-                            <div className="text-emerald-400 font-medium">{dep.label}</div>
-                            <div className="text-[10px] text-atlas-text-muted truncate">{dep.file}</div>
-                          </div>
-                        ))
-                      )}
-                    </div>
-                  </Card>
-                </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        {/* Right: Selected Node Intelligence Panel */}
-        <div className="w-80 border-l border-atlas-border bg-atlas-sidebar p-5 flex flex-col justify-between shrink-0 overflow-y-auto">
-          {selectedNode ? (
-            <div className="space-y-5">
-              {/* Header Title */}
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <Badge variant={getNodeColor(selectedNode.type).badge as any}>
-                    {selectedNode.type.toUpperCase()}
-                  </Badge>
-                  <span className="text-[10px] font-mono text-atlas-text-muted">
-                    L{selectedNode.start_line || 1} - L{selectedNode.end_line || 1}
+                  <Folder className={`w-3.5 h-3.5 ${isSelected ? "text-primary" : "text-neutral-400"}`} />
+                  <span className="text-xs font-mono font-medium">{m.name}</span>
+                  <span
+                    className={`text-[10px] px-1.5 py-0.2 rounded font-mono ${
+                      isSelected
+                        ? "bg-violet-100 text-primary"
+                        : "bg-neutral-100 text-neutral-500"
+                    }`}
+                  >
+                    {m.filesCount}
                   </span>
                 </div>
-                <h2 className="text-sm font-semibold font-mono text-atlas-text break-words">
-                  {selectedNode.label}
-                </h2>
-                <p className="text-[11px] text-atlas-text-muted font-mono mt-1 break-all">
-                  {selectedNode.file_path}
-                </p>
-              </div>
+              );
+            })}
+          </div>
 
-              {/* Action Buttons */}
-              <div className="flex flex-col gap-2">
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  leftIcon={<ExternalLink className="w-3.5 h-3.5" />}
+          {/* Canvas bottom hint */}
+          <div className="absolute bottom-4 left-6 text-xs text-neutral-500 flex items-center gap-2 bg-white/80 backdrop-blur-xs px-3 py-1.5 rounded-lg border border-neutral-200">
+            <span className="w-2 h-2 rounded-full bg-primary" />
+            <span>Click any module node to inspect dependencies & related files</span>
+          </div>
+        </div>
+
+        {/* Right Panel: Node Details (Matching Panel 05 Inspector) */}
+        <div className="w-80 border-l border-neutral-200 bg-white flex flex-col shrink-0 p-6 space-y-6 overflow-y-auto">
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+                Node Details
+              </h3>
+              <Badge variant="accent" size="sm">
+                SELECTED
+              </Badge>
+            </div>
+
+            <div className="flex items-center gap-3 p-3 bg-neutral-50 rounded-xl border border-neutral-200">
+              <div className="w-10 h-10 rounded-lg bg-violet-100 flex items-center justify-center text-primary shrink-0">
+                <Folder className="w-5 h-5" />
+              </div>
+              <div className="min-w-0">
+                <div className="font-bold text-base text-neutral-900 font-mono truncate">
+                  {selectedNode.name}
+                </div>
+                <div className="text-xs text-neutral-500">Sub-package Module</div>
+              </div>
+            </div>
+          </div>
+
+          {/* Properties list */}
+          <div className="space-y-2.5 font-mono text-xs">
+            <div className="flex items-center justify-between py-2 border-b border-neutral-100">
+              <span className="text-neutral-500 font-sans">Type</span>
+              <span className="font-semibold text-neutral-800">{selectedNode.type}</span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-neutral-100">
+              <span className="text-neutral-500 font-sans">Files</span>
+              <span className="font-semibold text-neutral-800">{selectedNode.filesCount}</span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-neutral-100">
+              <span className="text-neutral-500 font-sans">Dependencies</span>
+              <span className="font-semibold text-primary">{selectedNode.dependenciesCount}</span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-neutral-100">
+              <span className="text-neutral-500 font-sans">Dependents</span>
+              <span className="font-semibold text-emerald-600">{selectedNode.dependentsCount}</span>
+            </div>
+          </div>
+
+          {/* Related Files list matching design */}
+          <div className="space-y-2.5">
+            <h4 className="text-xs font-bold text-neutral-500 uppercase tracking-wider">
+              Related Files ({selectedNode.files.length})
+            </h4>
+
+            <div className="space-y-1.5 font-mono text-xs">
+              {selectedNode.files.map((file, i) => (
+                <div
+                  key={i}
                   onClick={() => navigate("/repositories")}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-neutral-50 hover:bg-violet-50 hover:text-primary border border-neutral-200/60 hover:border-violet-200 cursor-pointer transition-colors group"
                 >
-                  View Code in Repo Explorer
-                </Button>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  leftIcon={<Activity className="w-3.5 h-3.5" />}
-                  onClick={() => setViewMode("impact")}
-                >
-                  Analyze Blast Radius
-                </Button>
-              </div>
-
-              {/* Edge Connections */}
-              <div className="space-y-4 pt-2 border-t border-atlas-border">
-                {/* Outgoing Calls */}
-                <div>
-                  <div className="text-[11px] font-mono uppercase tracking-wider text-atlas-text-muted mb-2">
-                    Outgoing Calls ({selectedNodeConnected.outgoing.length})
-                  </div>
-                  <div className="space-y-1 max-h-36 overflow-y-auto">
-                    {selectedNodeConnected.outgoing.length === 0 ? (
-                      <p className="text-[11px] text-atlas-text-muted">None detected</p>
-                    ) : (
-                      selectedNodeConnected.outgoing.map((e, idx) => {
-                        const target = nodes.find((n) => n.id === e.target);
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => setSelectedNodeId(e.target)}
-                            className="p-1.5 rounded bg-atlas-surface border border-atlas-border hover:border-atlas-accent/40 text-xs font-mono cursor-pointer transition-colors"
-                          >
-                            <span className="text-atlas-text truncate block">
-                              {target ? target.label : e.target}
-                            </span>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
+                  <FileCode className="w-3.5 h-3.5 text-neutral-400 group-hover:text-primary shrink-0" />
+                  <span className="truncate flex-1 text-neutral-700 group-hover:text-primary">
+                    {file}
+                  </span>
+                  <ArrowRight className="w-3 h-3 text-neutral-400 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-
-                {/* Incoming Callers */}
-                <div>
-                  <div className="text-[11px] font-mono uppercase tracking-wider text-atlas-text-muted mb-2">
-                    Incoming Callers ({selectedNodeConnected.incoming.length})
-                  </div>
-                  <div className="space-y-1 max-h-36 overflow-y-auto">
-                    {selectedNodeConnected.incoming.length === 0 ? (
-                      <p className="text-[11px] text-atlas-text-muted">None detected</p>
-                    ) : (
-                      selectedNodeConnected.incoming.map((e, idx) => {
-                        const source = nodes.find((n) => n.id === e.source);
-                        return (
-                          <div
-                            key={idx}
-                            onClick={() => setSelectedNodeId(e.source)}
-                            className="p-1.5 rounded bg-atlas-surface border border-atlas-border hover:border-atlas-accent/40 text-xs font-mono cursor-pointer transition-colors"
-                          >
-                            <span className="text-atlas-text truncate block">
-                              {source ? source.label : e.source}
-                            </span>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-              </div>
+              ))}
             </div>
-          ) : (
-            <div className="text-center py-12 text-xs text-atlas-text-muted">
-              {graphLoading ? "Loading graph data..." : "Select a node to inspect relationships."}
-            </div>
-          )}
+          </div>
 
-          {/* Quick Metrics Footer */}
-          <div className="border-t border-atlas-border pt-3 mt-4 text-[10px] font-mono text-atlas-text-muted flex justify-between">
-            <span>TOTAL NODES: {nodes.length}</span>
-            <span>EDGES: {edges.length}</span>
+          {/* Bottom Action */}
+          <div className="pt-4 border-t border-neutral-200">
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full text-xs"
+              onClick={() => navigate("/repositories")}
+            >
+              View in Repository Explorer
+            </Button>
           </div>
         </div>
       </div>

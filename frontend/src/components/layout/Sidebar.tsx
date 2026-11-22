@@ -10,15 +10,13 @@ import {
   Boxes,
   Network,
   AlertTriangle,
-  Brain,
+  Cpu,
   Activity,
   BarChart3,
   Database,
-  Clock,
   Settings,
   ChevronsLeft,
-  ChevronsRight,
-  User,
+  Briefcase,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useSidebarStore } from "@/stores/sidebar";
@@ -38,10 +36,10 @@ const navSections: NavSection[] = [
   {
     title: "Workspace",
     items: [
-      { label: "Overview", icon: LayoutDashboard, path: "/" },
+      { label: "Overview", icon: LayoutDashboard, path: "/dashboard" },
       { label: "Repositories", icon: FolderGit2, path: "/repositories" },
-      { label: "Search", icon: Search, path: "/search" },
-      { label: "Ask CodeAtlas", icon: MessageSquare, path: "/chat" },
+      { label: "Ask Codexa", icon: MessageSquare, path: "/chat" },
+      { label: "Search Code", icon: Search, path: "/search" },
     ],
   },
   {
@@ -50,22 +48,21 @@ const navSections: NavSection[] = [
       { label: "Code Graph", icon: GitBranch, path: "/graph" },
       { label: "Architecture", icon: Boxes, path: "/architecture" },
       { label: "Dependencies", icon: Network, path: "/dependencies" },
-      { label: "Issues", icon: AlertTriangle, path: "/issues" },
+      { label: "Issues & Risks", icon: AlertTriangle, path: "/issues" },
     ],
   },
   {
-    title: "Machine Learning",
+    title: "Models",
     items: [
-      { label: "Models", icon: Brain, path: "/models" },
+      { label: "Models", icon: Cpu, path: "/models" },
       { label: "Training Runs", icon: Activity, path: "/training" },
       { label: "Evaluation", icon: BarChart3, path: "/evaluation" },
-      { label: "Dataset Explorer", icon: Database, path: "/datasets" },
+      { label: "Datasets", icon: Database, path: "/datasets" },
     ],
   },
   {
     title: "System",
     items: [
-      { label: "Activity", icon: Clock, path: "/activity" },
       { label: "Settings", icon: Settings, path: "/settings" },
     ],
   },
@@ -93,44 +90,56 @@ export function Sidebar() {
   return (
     <aside
       className={cn(
-        "flex flex-col h-screen bg-atlas-sidebar border-r border-atlas-border",
-        "transition-[width] duration-200 ease-in-out shrink-0",
-        isCollapsed ? "w-[68px]" : "w-[240px]"
+        "flex flex-col h-screen bg-codexa-surface border-r border-codexa-border",
+        "transition-[width] duration-200 ease-in-out shrink-0 select-none",
+        isCollapsed ? "w-[72px]" : "w-[248px]"
       )}
     >
-      {/* Header */}
-      <header className="flex items-center justify-between h-14 px-4 border-b border-atlas-border">
-        {!isCollapsed && (
-          <span className="text-sm font-semibold text-atlas-text truncate">
-            CodeAtlas
-          </span>
+      {/* Brand Header */}
+      <header className="flex items-center justify-between h-16 px-4 border-b border-codexa-border">
+        {!isCollapsed ? (
+          <Link to="/" className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-codexa-primary flex items-center justify-center text-white shadow-subtle">
+              <span className="font-mono text-xs font-bold">&lt;/&gt;</span>
+            </div>
+            <span className="text-base font-bold tracking-tight text-codexa-text">
+              Codexa
+            </span>
+          </Link>
+        ) : (
+          <div className="w-7 h-7 rounded-lg bg-codexa-primary flex items-center justify-center text-white shadow-subtle mx-auto">
+            <span className="font-mono text-xs font-bold">&lt;/&gt;</span>
+          </div>
         )}
         <button
           onClick={toggle}
+          aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
           className={cn(
-            "p-1.5 rounded text-atlas-text-muted hover:text-atlas-text hover:bg-atlas-hover",
-            "transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-atlas-accent",
-            isCollapsed && "mx-auto"
+            "p-1.5 rounded-lg text-codexa-text-muted hover:text-codexa-text hover:bg-codexa-bg-secondary",
+            "transition-colors duration-150 focus:outline-none focus:ring-1 focus:ring-codexa-primary",
+            isCollapsed && "hidden"
           )}
           title={isCollapsed ? "Expand sidebar (Ctrl+B)" : "Collapse sidebar (Ctrl+B)"}
         >
-          {isCollapsed ? <ChevronsRight size={18} /> : <ChevronsLeft size={18} />}
+          <ChevronsLeft size={16} />
         </button>
       </header>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-2 px-2">
+      {/* Navigation Links */}
+      <nav className="flex-1 overflow-y-auto py-3 px-3 space-y-4">
         {navSections.map((section) => (
-          <div key={section.title} className="mb-4">
+          <div key={section.title} className="space-y-1">
             {!isCollapsed && (
-              <span className="block px-2 py-1 text-[11px] font-medium uppercase tracking-wider text-atlas-text-muted">
+              <span className="block px-2.5 py-1 text-[10px] font-mono font-bold uppercase tracking-wider text-codexa-text-muted">
                 {section.title}
               </span>
             )}
-            {isCollapsed && <div className="h-px bg-atlas-border mx-2 my-2" />}
-            <ul>
+            {isCollapsed && <div className="h-px bg-codexa-border mx-2 my-2" />}
+            <ul className="space-y-0.5">
               {section.items.map((item) => {
-                const isActive = location.pathname === item.path;
+                const isActive =
+                  location.pathname === item.path ||
+                  (item.path === "/dashboard" && location.pathname === "/");
                 const Icon = item.icon;
                 return (
                   <li key={item.path}>
@@ -138,18 +147,19 @@ export function Sidebar() {
                       to={item.path}
                       title={isCollapsed ? item.label : undefined}
                       className={cn(
-                        "flex items-center gap-3 px-2 py-1.5 rounded text-sm transition-colors duration-150",
-                        "focus:outline-none focus:ring-1 focus:ring-atlas-accent",
+                        "flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-xs font-medium transition-all duration-150",
+                        "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-codexa-primary",
                         isActive
-                          ? "bg-atlas-accent/10 text-atlas-accent border-l-2 border-atlas-accent -ml-px pl-[7px]"
-                          : "text-atlas-text-secondary hover:text-atlas-text hover:bg-atlas-hover",
-                        isCollapsed && "justify-center px-0"
+                          ? "bg-codexa-violet-surface text-codexa-indigo font-semibold shadow-subtle"
+                          : "text-codexa-text-secondary hover:text-codexa-text hover:bg-codexa-surface-hover",
+                        isCollapsed && "justify-center px-0 py-2.5"
                       )}
                     >
-                      <Icon size={18} />
-                      {!isCollapsed && (
-                        <span className="truncate">{item.label}</span>
-                      )}
+                      <Icon
+                        size={17}
+                        className={isActive ? "text-codexa-primary" : "text-codexa-text-muted"}
+                      />
+                      {!isCollapsed && <span className="truncate">{item.label}</span>}
                     </Link>
                   </li>
                 );
@@ -159,26 +169,36 @@ export function Sidebar() {
         ))}
       </nav>
 
-      {/* Footer */}
-      <footer className="border-t border-atlas-border px-3 py-3">
+      {/* Footer: User profile & workspace */}
+      <footer className="border-t border-codexa-border p-3 space-y-2 bg-codexa-surface">
+        {!isCollapsed && (
+          <div className="flex items-center justify-between px-2 py-1.5 rounded-lg bg-codexa-bg text-xs">
+            <div className="flex items-center gap-2 truncate">
+              <Briefcase size={14} className="text-codexa-text-muted shrink-0" />
+              <span className="font-semibold text-codexa-text truncate">Personal</span>
+            </div>
+            <span className="text-[10px] font-mono text-codexa-text-muted">FREE</span>
+          </div>
+        )}
+
         <div
           className={cn(
-            "flex items-center gap-3",
-            isCollapsed && "justify-center"
+            "flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-codexa-surface-hover cursor-pointer transition-colors",
+            isCollapsed && "justify-center px-0"
           )}
         >
           <div className="relative shrink-0">
-            <div className="w-8 h-8 rounded-full bg-atlas-surface-secondary flex items-center justify-center">
-              <User size={16} className="text-atlas-text-muted" />
+            <div className="w-8 h-8 rounded-full bg-codexa-violet-light flex items-center justify-center text-codexa-indigo font-bold text-xs">
+              S
             </div>
-            <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-atlas-sidebar" />
+            <span className="absolute bottom-0 right-0 w-2 h-2 rounded-full bg-emerald-500 border border-white" />
           </div>
           {!isCollapsed && (
             <div className="min-w-0">
-              <p className="text-sm font-medium text-atlas-text truncate">
-                Workspace
+              <p className="text-xs font-semibold text-codexa-text truncate">
+                Shaurya
               </p>
-              <p className="text-xs text-atlas-text-muted truncate">Active</p>
+              <p className="text-[11px] text-codexa-text-muted truncate">Active Engineer</p>
             </div>
           )}
         </div>

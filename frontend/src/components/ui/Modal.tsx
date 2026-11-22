@@ -62,43 +62,43 @@ export const Modal: React.FC<ModalProps> = ({
       {/* Backdrop */}
       <div
         onClick={onClose}
-        className="fixed inset-0 bg-black/75 backdrop-blur-[2px] transition-opacity animate-fade-in"
+        className="fixed inset-0 bg-codexa-text/30 backdrop-blur-[2px] transition-opacity animate-fade-in"
         aria-hidden="true"
       />
 
       {/* Dialog Surface */}
       <div
         className={cn(
-          "relative w-full bg-atlas-surface border border-atlas-border-strong rounded-xl shadow-modal",
+          "relative w-full bg-codexa-surface border border-codexa-border-strong rounded-2xl shadow-modal",
           "overflow-hidden transition-all transform animate-scale-in z-10",
           maxWidthStyles[maxWidth]
         )}
       >
         {/* Header */}
-        <div className="flex items-start justify-between px-5 py-4 border-b border-atlas-border bg-atlas-surface">
+        <div className="flex items-start justify-between px-6 py-4.5 border-b border-codexa-border bg-codexa-surface">
           <div>
-            <h3 id="modal-title" className="text-sm font-semibold text-atlas-text">
+            <h3 id="modal-title" className="text-sm font-semibold text-codexa-text">
               {title}
             </h3>
             {description && (
-              <p className="mt-0.5 text-xs text-atlas-text-muted">{description}</p>
+              <p className="mt-0.5 text-xs text-codexa-text-secondary">{description}</p>
             )}
           </div>
           <button
             onClick={onClose}
             aria-label="Close dialog"
-            className="p-1 -mr-1 text-atlas-text-muted hover:text-atlas-text hover:bg-atlas-hover rounded-md transition-colors"
+            className="p-1 -mr-1 text-codexa-text-muted hover:text-codexa-text hover:bg-codexa-bg-secondary rounded-lg transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Body */}
-        <div className="p-5 overflow-y-auto max-h-[calc(80vh-8rem)]">{children}</div>
+        <div className="p-6 overflow-y-auto max-h-[calc(80vh-8rem)]">{children}</div>
 
         {/* Optional Footer */}
         {footer && (
-          <div className="flex items-center justify-end gap-2 px-5 py-3 border-t border-atlas-border bg-atlas-surface-secondary">
+          <div className="flex items-center justify-end gap-2.5 px-6 py-3.5 border-t border-codexa-border bg-codexa-bg">
             {footer}
           </div>
         )}

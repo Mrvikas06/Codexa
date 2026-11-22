@@ -27,24 +27,24 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const variantStyles: Record<string, string> = {
       primary:
-        "bg-atlas-accent text-white hover:bg-atlas-accent-hover shadow-subtle focus-visible:ring-atlas-accent active:bg-blue-600",
+        "bg-codexa-primary text-white hover:bg-codexa-primary-hover shadow-subtle border border-transparent focus-visible:ring-codexa-primary active:bg-codexa-indigo",
       secondary:
-        "bg-atlas-surface text-atlas-text hover:bg-atlas-surface-secondary border border-atlas-border hover:border-atlas-border-strong focus-visible:ring-atlas-border-strong",
+        "bg-codexa-surface text-codexa-text hover:bg-codexa-surface-hover border border-codexa-border shadow-subtle focus-visible:ring-codexa-primary",
       tertiary:
-        "bg-transparent text-atlas-text-secondary hover:text-atlas-text hover:bg-atlas-hover border border-atlas-border/60 hover:border-atlas-border focus-visible:ring-atlas-border",
+        "bg-transparent text-codexa-text-secondary hover:text-codexa-text hover:bg-codexa-bg-secondary border border-codexa-border/60",
       outline:
-        "bg-transparent text-atlas-text hover:bg-atlas-hover border border-atlas-border hover:border-atlas-border-strong",
+        "bg-transparent text-codexa-text hover:bg-codexa-surface-hover border border-codexa-border hover:border-codexa-border-strong",
       ghost:
-        "bg-transparent text-atlas-text-secondary hover:text-atlas-text hover:bg-atlas-hover focus-visible:ring-atlas-hover",
+        "bg-transparent text-codexa-text-secondary hover:text-codexa-text hover:bg-codexa-bg-secondary",
       destructive:
-        "bg-rose-600/90 text-white hover:bg-rose-600 border border-rose-500/30 focus-visible:ring-rose-500 active:bg-rose-700",
+        "bg-codexa-error text-white hover:bg-red-600 shadow-subtle focus-visible:ring-codexa-error",
     };
 
     const sizeStyles: Record<string, string> = {
-      xs: "h-6 px-2 text-[11px] gap-1 rounded",
-      sm: "h-7 px-2.5 text-xs gap-1.5 rounded-md",
-      md: "h-8 px-3.5 text-xs font-medium gap-2 rounded-md",
-      lg: "h-10 px-4 text-sm font-medium gap-2.5 rounded-lg",
+      xs: "h-6 px-2 text-[11px] gap-1 rounded-md",
+      sm: "h-8 px-3 text-xs gap-1.5 rounded-lg font-medium",
+      md: "h-9 px-4 text-xs font-medium gap-2 rounded-lg",
+      lg: "h-11 px-5 text-sm font-semibold gap-2.5 rounded-xl",
     };
 
     return (
@@ -54,9 +54,9 @@ export const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         className={cn(
           "inline-flex items-center justify-center font-sans tracking-tight select-none",
           "transition-all duration-150 ease-out",
-          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-atlas-bg",
+          "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-codexa-bg",
           "active:scale-[0.98]",
-          "disabled:opacity-45 disabled:pointer-events-none disabled:cursor-not-allowed",
+          "disabled:opacity-50 disabled:pointer-events-none disabled:cursor-not-allowed",
           variantStyles[variant],
           sizeStyles[size],
           className

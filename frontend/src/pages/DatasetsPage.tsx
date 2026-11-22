@@ -29,39 +29,62 @@ export const DatasetsPage: React.FC = () => {
   ];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-atlas-bg text-atlas-text overflow-y-auto p-8 space-y-6 max-w-7xl mx-auto">
-      <div className="border-b border-atlas-border pb-5">
-        <div className="flex items-center gap-2 mb-1">
-          <h1 className="text-2xl font-bold tracking-tight text-atlas-text flex items-center gap-2">
-            <Database className="w-6 h-6 text-atlas-accent" />
-            <span>Training & Benchmark Datasets</span>
-          </h1>
-          <Badge variant="accent" size="sm">VERSIONED REPOSITORIES</Badge>
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-[#F7F8FC] text-neutral-900 overflow-y-auto">
+      {/* Top Header */}
+      <div className="h-14 border-b border-neutral-200 bg-white px-6 flex items-center justify-between shrink-0 sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Database className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-sm text-neutral-900">Datasets</span>
+          </div>
+
+          <span className="text-neutral-300">/</span>
+
+          <span className="text-xs font-mono font-medium text-neutral-600">
+            Training & Benchmark Corpora
+          </span>
         </div>
-        <p className="text-xs text-atlas-text-secondary">
-          Versioned code corpora used for pre-training, fine-tuning, and offline evaluation.
-        </p>
+
+        <Badge variant="accent" size="sm">
+          VERSIONED DATASETS
+        </Badge>
       </div>
 
-      <div className="space-y-4">
-        {datasets.map((d, idx) => (
-          <Card key={idx} className="p-5 flex items-center justify-between">
-            <div className="flex items-center gap-3.5">
-              <div className="p-2 rounded bg-atlas-surface-secondary border border-atlas-border text-atlas-accent">
-                <FileText className="w-5 h-5" />
-              </div>
-              <div>
-                <div className="text-sm font-semibold text-atlas-text font-mono">{d.name}</div>
-                <div className="text-xs text-atlas-text-secondary mt-0.5">{d.purpose}</div>
-              </div>
-            </div>
+      <div className="p-8 max-w-7xl mx-auto w-full space-y-6">
+        <div>
+          <h2 className="text-xl font-bold tracking-tight text-neutral-900">
+            Machine Learning Corpora
+          </h2>
+          <p className="text-xs text-neutral-500 mt-1">
+            Pre-tokenized training datasets and evaluation benchmarks with exact line boundaries.
+          </p>
+        </div>
 
-            <div className="flex items-center gap-4 font-mono text-xs text-atlas-text-muted">
-              <span>{d.size}</span>
-              <Badge variant="accent" size="sm">{d.type}</Badge>
-            </div>
-          </Card>
-        ))}
+        <div className="space-y-4">
+          {datasets.map((d, idx) => (
+            <Card
+              key={idx}
+              className="p-5 bg-white border-neutral-200 shadow-card flex items-center justify-between hover:border-violet-200 hover:shadow-card-hover transition-all"
+            >
+              <div className="flex items-center gap-3.5">
+                <div className="p-2.5 rounded-xl bg-violet-50 text-primary border border-violet-100">
+                  <FileText className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="text-sm font-semibold text-neutral-900 font-mono">{d.name}</div>
+                  <div className="text-xs text-neutral-500 mt-0.5">{d.purpose}</div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-4 font-mono text-xs">
+                <span className="text-neutral-600 font-semibold">{d.size}</span>
+                <Badge variant="accent" size="sm">
+                  {d.type}
+                </Badge>
+              </div>
+            </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

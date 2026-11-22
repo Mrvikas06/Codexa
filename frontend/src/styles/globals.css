@@ -3,47 +3,48 @@
 @tailwind utilities;
 
 :root {
-  /* Surface and Background Tokens */
-  --bg-atlas: #0B0D10;
-  --bg-sidebar: #0E1014;
-  --surface-primary: #14171C;
-  --surface-secondary: #191D23;
-  --surface-hover: #1D2229;
-  --surface-elevated: #222730;
+  /* Primary Brand Palette */
+  --color-primary: #6C5CE7;
+  --color-primary-hover: #5A4AD1;
+  --color-indigo: #5141C9;
+  --color-violet-soft: #A78BFA;
+  --color-violet-light: #EDE9FE;
+  --color-violet-surface: #F5F3FF;
 
-  /* Border Tokens */
-  --border-subtle: #262B33;
-  --border-strong: #343B45;
+  /* Accent Palette */
+  --color-cyan: #0EA5E9;
+  --color-blue: #3B82F6;
 
-  /* Typography Tokens */
-  --text-primary: #F1F3F5;
-  --text-secondary: #A0A7B2;
-  --text-muted: #69717D;
+  /* Neutral Surfaces (Sophisticated Light Theme) */
+  --color-bg: #F7F8FC;
+  --color-bg-secondary: #F1F3F8;
+  --color-surface: #FFFFFF;
+  --color-surface-hover: #F9FAFB;
+  --color-text: #171A2B;
+  --color-text-secondary: #667085;
+  --color-text-muted: #98A2B3;
+  --color-border: #E5E7EB;
+  --color-border-strong: #D0D5DD;
 
-  /* Accent & Status Tokens */
-  --accent-primary: #6C8CFF;
-  --accent-hover: #85A1FF;
-  --accent-subtle: rgba(108, 140, 255, 0.12);
-  --status-success: #10B981;
-  --status-warning: #F59E0B;
-  --status-error: #EF4444;
-  --status-info: #3B82F6;
-
-  /* Radii Tokens */
-  --radius-sm: 6px;
-  --radius-md: 8px;
-  --radius-lg: 10px;
-  --radius-xl: 12px;
+  /* Semantic Colors */
+  --color-success: #16A34A;
+  --color-success-bg: #ECFDF3;
+  --color-warning: #F59E0B;
+  --color-warning-bg: #FFFAEB;
+  --color-error: #EF4444;
+  --color-error-bg: #FEF2F2;
+  --color-info: #0EA5E9;
+  --color-info-bg: #F0F9FF;
 }
 
 @layer base {
   html {
-    color-scheme: dark;
-    background-color: var(--bg-atlas);
+    color-scheme: light;
+    background-color: var(--color-bg);
   }
 
   body {
-    @apply bg-atlas-bg text-atlas-text font-sans antialiased selection:bg-atlas-accent/25 selection:text-atlas-text;
+    @apply bg-codexa-bg text-codexa-text font-sans antialiased selection:bg-codexa-violet-light selection:text-codexa-indigo;
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -51,11 +52,11 @@
 
   /* Accessible focus indicators */
   :focus-visible {
-    outline: 2px solid var(--accent-primary);
+    outline: 2px solid var(--color-primary);
     outline-offset: 2px;
   }
 
-  /* Precise Technical Scrollbar */
+  /* Refined, unobtrusive scrollbars */
   ::-webkit-scrollbar {
     width: 6px;
     height: 6px;
@@ -66,22 +67,22 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: var(--border-strong);
+    background: #D0D5DD;
     border-radius: 9999px;
   }
 
   ::-webkit-scrollbar-thumb:hover {
-    background: var(--text-muted);
+    background: #98A2B3;
   }
 
   /* Firefox scrollbar */
   * {
     scrollbar-width: thin;
-    scrollbar-color: var(--border-strong) transparent;
+    scrollbar-color: #D0D5DD transparent;
   }
 }
 
-/* Reduced motion accessibility */
+/* Reduced motion support */
 @media (prefers-reduced-motion: reduce) {
   *,
   ::before,

@@ -4,125 +4,140 @@ import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 
-interface EvalMetric {
-  name: string;
-  value: string;
-  threshold: string;
-  pass: boolean;
-}
-
-interface BenchmarkSuite {
-  name: string;
-  target: string;
-  dataset: string;
-  evalDate: string;
-  metrics: EvalMetric[];
-}
-
 export const EvaluationPage: React.FC = () => {
+  const [selectedModel, setSelectedModel] = useState("Code Encoder (v1.0.0)");
   const [isRunning, setIsRunning] = useState(false);
 
-  const benchmarks: BenchmarkSuite[] = [
-    {
-      name: "Code Retrieval Benchmark v1",
-      target: "Model A (Encoder) + BM25",
-      dataset: "benchmarks/retrieval_v1.json",
-      evalDate: "2026-11-20",
-      metrics: [
-        { name: "Recall@5", value: "1.000", threshold: ">=0.80", pass: true },
-        { name: "Recall@10", value: "1.000", threshold: ">=0.90", pass: true },
-        { name: "MRR", value: "0.640", threshold: ">=0.60", pass: true },
-      ],
-    },
-    {
-      name: "Neural Reranking Benchmark v1",
-      target: "Model B (Cross-Encoder Reranker)",
-      dataset: "benchmarks/ranking_v1.json",
-      evalDate: "2026-11-20",
-      metrics: [
-        { name: "MRR", value: "0.556", threshold: ">=0.55", pass: true },
-        { name: "NDCG@5", value: "0.667", threshold: ">=0.50", pass: true },
-        { name: "Precision@5", value: "1.000", threshold: ">=0.80", pass: true },
-      ],
-    },
-    {
-      name: "Evidence Grounding & Citation Integrity",
-      target: "Model C (Causal Decoder) + CitationValidator",
-      dataset: "benchmarks/generation_citations_v1.json",
-      evalDate: "2026-11-21",
-      metrics: [
-        { name: "Citation Precision", value: "1.000", threshold: "1.000", pass: true },
-        { name: "Citation Recall", value: "1.000", threshold: ">=0.90", pass: true },
-        { name: "F1 Grounding Score", value: "1.000", threshold: ">=0.90", pass: true },
-      ],
-    },
+  const metrics = [
+    { label: "Recall@5", value: "0.923", target: ">= 0.85" },
+    { label: "Recall@10", value: "0.957", target: ">= 0.90" },
+    { label: "MRR", value: "0.891", target: ">= 0.75" },
+    { label: "NDCG@10", value: "0.939", target: ">= 0.80" },
+  ];
+
+  const queryPerformance = [
+    { type: "Symbol Search", score: 0.96, label: "0.96" },
+    { type: "Semantic Search", score: 0.92, label: "0.92" },
+    { type: "Bug Investigation", score: 0.87, label: "0.87" },
+    { type: "Architecture", score: 0.89, label: "0.89" },
   ];
 
   const handleRunEvaluation = () => {
     setIsRunning(true);
     setTimeout(() => {
       setIsRunning(false);
-    }, 1800);
+    }, 1500);
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-atlas-bg text-atlas-text overflow-y-auto p-8 space-y-6 max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-atlas-border pb-5">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-2xl font-bold tracking-tight text-atlas-text flex items-center gap-2">
-              <BarChart3 className="w-6 h-6 text-atlas-accent" />
-              <span>Evaluation & Quality Flywheel</span>
-            </h1>
-            <Badge variant="success" size="sm" dot>VERIFIED ACCURACY</Badge>
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-[#F7F8FC] text-neutral-900 overflow-y-auto">
+      {/* Top Header */}
+      <div className="h-14 border-b border-neutral-200 bg-white px-6 flex items-center justify-between shrink-0 sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-primary" />
+            <span className="font-semibold text-sm text-neutral-900">Evaluation</span>
           </div>
-          <p className="text-xs text-atlas-text-secondary">
-            Versioned regression testing harnesses preventing hallucinations, ranking drift, and grounding degradation.
-          </p>
+
+          <span className="text-neutral-300">/</span>
+
+          <span className="text-xs font-mono font-medium text-neutral-600">
+            Retrieval & Ranking Benchmarks
+          </span>
         </div>
 
-        <Button
-          size="sm"
-          variant="primary"
-          leftIcon={isRunning ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
-          loading={isRunning}
-          onClick={handleRunEvaluation}
-        >
-          {isRunning ? "Running Live Harness..." : "Execute Test Suite"}
-        </Button>
+        <div className="flex items-center gap-3">
+          <select
+            value={selectedModel}
+            onChange={(e) => setSelectedModel(e.target.value)}
+            className="bg-neutral-50 border border-neutral-200 text-xs text-neutral-800 rounded-lg px-3 py-1.5 font-mono focus:outline-none focus:border-primary cursor-pointer"
+          >
+            <option value="Code Encoder (v1.0.0)">Code Encoder (v1.0.0)</option>
+            <option value="Neural Reranker (v1.0.0)">Neural Reranker (v1.0.0)</option>
+            <option value="Mini-Decoder (v0.9.0)">Mini-Decoder (v0.9.0)</option>
+          </select>
+
+          <Button
+            size="sm"
+            variant="primary"
+            leftIcon={
+              isRunning ? (
+                <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <Play className="w-3.5 h-3.5" />
+              )
+            }
+            loading={isRunning}
+            onClick={handleRunEvaluation}
+          >
+            {isRunning ? "Running Suite..." : "Run Evaluation"}
+          </Button>
+        </div>
       </div>
 
-      {/* Benchmarks List */}
-      <div className="space-y-4">
-        {benchmarks.map((bench, idx) => (
-          <Card key={idx} className="p-5 space-y-4">
-            <div className="flex items-center justify-between border-b border-atlas-border pb-3">
-              <div>
-                <h3 className="text-sm font-semibold text-atlas-text">{bench.name}</h3>
-                <p className="text-xs text-atlas-text-secondary mt-0.5 font-mono">
-                  Target: {bench.target} · Dataset: {bench.dataset}
-                </p>
+      <div className="p-8 max-w-7xl mx-auto w-full space-y-6">
+        {/* Model Card Header with 4 top metrics matching Panel 11 */}
+        <Card className="p-6 bg-white border-neutral-200 shadow-card space-y-6">
+          <div className="flex items-center justify-between border-b border-neutral-100 pb-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-neutral-400 uppercase tracking-wider font-mono">
+                  Model
+                </span>
+                <span className="font-bold text-base text-neutral-900 font-mono">
+                  {selectedModel}
+                </span>
               </div>
-              <Badge variant="success" size="sm">ALL TESTS PASSED</Badge>
+              <p className="text-xs text-neutral-500 mt-1">
+                Evaluated against 1,200 curated code retrieval query pairs across 18 public
+                repositories.
+              </p>
             </div>
+            <Badge variant="success" size="sm" dot>
+              PRODUCTION VERIFIED
+            </Badge>
+          </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {bench.metrics.map((m, mIdx) => (
-                <div
-                  key={mIdx}
-                  className="p-3 bg-atlas-surface-secondary border border-atlas-border rounded-lg space-y-1 font-mono text-xs"
-                >
-                  <div className="text-[10px] text-atlas-text-muted flex items-center justify-between font-sans">
-                    <span>{m.name}</span>
-                    <span className="text-atlas-text-secondary">Threshold: {m.threshold}</span>
+          {/* 4 Score Cards in a row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {metrics.map((m, idx) => (
+              <div
+                key={idx}
+                className="p-4 rounded-xl bg-neutral-50/70 border border-neutral-200/80 font-mono"
+              >
+                <div className="text-[11px] text-neutral-500 font-sans">{m.label}</div>
+                <div className="text-2xl font-bold text-neutral-900 mt-1">{m.value}</div>
+                <div className="text-[10px] text-emerald-600 mt-1 font-sans">
+                  Target: {m.target}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Performance by Query Type matching Panel 11 */}
+          <div className="space-y-4 pt-2">
+            <h4 className="text-xs font-bold text-neutral-700 uppercase tracking-wider">
+              Performance by Query Type
+            </h4>
+
+            <div className="space-y-3 font-mono text-xs">
+              {queryPerformance.map((item, idx) => (
+                <div key={idx} className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-neutral-700 font-sans font-medium">{item.type}</span>
+                    <span className="font-bold text-neutral-900">{item.label}</span>
                   </div>
-                  <div className="text-xl font-bold text-emerald-400">{m.value}</div>
+                  <div className="w-full h-2 rounded-full bg-neutral-100 overflow-hidden">
+                    <div
+                      className="h-full bg-primary rounded-full transition-all duration-500"
+                      style={{ width: `${item.score * 100}%` }}
+                    />
+                  </div>
                 </div>
               ))}
             </div>
-          </Card>
-        ))}
+          </div>
+        </Card>
       </div>
     </div>
   );

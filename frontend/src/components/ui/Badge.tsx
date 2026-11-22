@@ -2,7 +2,7 @@ import React from "react";
 import { cn } from "@/lib/utils";
 
 export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
-  variant?: "default" | "accent" | "success" | "warning" | "danger" | "outline";
+  variant?: "default" | "accent" | "success" | "warning" | "danger" | "outline" | "info";
   size?: "sm" | "md";
   dot?: boolean;
 }
@@ -16,32 +16,34 @@ export const Badge: React.FC<BadgeProps> = ({
   ...props
 }) => {
   const variantStyles: Record<string, string> = {
-    default: "bg-atlas-surface-secondary text-atlas-text-secondary border-atlas-border",
-    accent: "bg-atlas-accent/15 text-atlas-accent border-atlas-accent/30",
-    success: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30",
-    warning: "bg-amber-500/15 text-amber-400 border-amber-500/30",
-    danger: "bg-rose-500/15 text-rose-400 border-rose-500/30",
-    outline: "bg-transparent text-atlas-text-secondary border-atlas-border",
+    default: "bg-codexa-bg-secondary text-codexa-text-secondary border-codexa-border",
+    accent: "bg-codexa-violet-light text-codexa-indigo border-codexa-violet-soft/30",
+    success: "bg-codexa-success-bg text-codexa-success border-emerald-200",
+    warning: "bg-codexa-warning-bg text-codexa-warning border-amber-200",
+    danger: "bg-codexa-error-bg text-codexa-error border-red-200",
+    info: "bg-codexa-info-bg text-codexa-info border-sky-200",
+    outline: "bg-transparent text-codexa-text-secondary border-codexa-border",
   };
 
   const dotColors: Record<string, string> = {
-    default: "bg-atlas-text-muted",
-    accent: "bg-atlas-accent",
-    success: "bg-emerald-400",
-    warning: "bg-amber-400",
-    danger: "bg-rose-400",
-    outline: "bg-atlas-text-secondary",
+    default: "bg-codexa-text-muted",
+    accent: "bg-codexa-primary",
+    success: "bg-codexa-success",
+    warning: "bg-codexa-warning",
+    danger: "bg-codexa-error",
+    info: "bg-codexa-info",
+    outline: "bg-codexa-text-secondary",
   };
 
   const sizeStyles: Record<string, string> = {
-    sm: "px-1.5 py-0.5 text-[10px] gap-1",
-    md: "px-2 py-0.5 text-[11px] gap-1.5",
+    sm: "px-2 py-0.5 text-[10px] gap-1 rounded-md",
+    md: "px-2.5 py-0.5 text-[11px] gap-1.5 rounded-md",
   };
 
   return (
     <span
       className={cn(
-        "inline-flex items-center font-mono font-medium rounded border tracking-tight leading-none select-none",
+        "inline-flex items-center font-mono font-medium border tracking-tight leading-none select-none",
         variantStyles[variant],
         sizeStyles[size],
         className
