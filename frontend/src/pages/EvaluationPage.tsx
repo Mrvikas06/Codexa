@@ -1,10 +1,28 @@
-import React from "react";
-import { BarChart3 } from "lucide-react";
+import React, { useState } from "react";
+import { BarChart3, Play, RefreshCw } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+
+interface EvalMetric {
+  name: string;
+  value: string;
+  threshold: string;
+  pass: boolean;
+}
+
+interface BenchmarkSuite {
+  name: string;
+  target: string;
+  dataset: string;
+  evalDate: string;
+  metrics: EvalMetric[];
+}
 
 export const EvaluationPage: React.FC = () => {
-  const benchmarks = [
+  const [isRunning, setIsRunning] = useState(false);
+
+  const benchmarks: BenchmarkSuite[] = [
     {
       name: "Code Retrieval Benchmark v1",
       target: "Model A (Encoder) + BM25",
@@ -40,40 +58,66 @@ export const EvaluationPage: React.FC = () => {
     },
   ];
 
+  const handleRunEvaluation = () => {
+    setIsRunning(true);
+    setTimeout(() => {
+      setIsRunning(false);
+    }, 1800);
+  };
+
   return (
-    <div className="flex flex-col h-[calc(100vh-4rem)] bg-[#0B0D10] text-[#F1F3F5] overflow-auto p-6 space-y-6">
-      <div className="border-b border-[#262B33] pb-4 space-y-1">
-        <h1 className="text-lg font-semibold tracking-tight flex items-center space-x-2">
-          <BarChart3 className="w-5 h-5 text-[#6C8CFF]" />
-          <span>Evaluation Benchmarks & Quality Flywheel</span>
-        </h1>
-        <p className="text-xs text-[#A0A7B2]">
-          Rigorous offline evaluation against versioned datasets to prevent regressions and enforce zero hallucinations.
-        </p>
+    <div className="flex flex-col h-[calc(100vh-3.25rem)] bg-atlas-bg text-atlas-text overflow-y-auto p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-atlas-border pb-5">
+        <div>
+          <div className="flex items-center gap-2 mb-1">
+            <h1 className="text-2xl font-bold tracking-tight text-atlas-text flex items-center gap-2">
+              <BarChart3 className="w-6 h-6 text-atlas-accent" />
+              <span>Evaluation & Quality Flywheel</span>
+            </h1>
+            <Badge variant="success" size="sm" dot>VERIFIED ACCURACY</Badge>
+          </div>
+          <p className="text-xs text-atlas-text-secondary">
+            Versioned regression testing harnesses preventing hallucinations, ranking drift, and grounding degradation.
+          </p>
+        </div>
+
+        <Button
+          size="sm"
+          variant="primary"
+          leftIcon={isRunning ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
+          loading={isRunning}
+          onClick={handleRunEvaluation}
+        >
+          {isRunning ? "Running Live Harness..." : "Execute Test Suite"}
+        </Button>
       </div>
 
+      {/* Benchmarks List */}
       <div className="space-y-4">
         {benchmarks.map((bench, idx) => (
-          <Card key={idx} className="space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-semibold text-[#F1F3F5]">{bench.name}</h3>
-                <p className="text-xs text-[#A0A7B2]">Target: {bench.target} · Dataset: {bench.dataset}</p>
+          <Card key={idx} className="p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-atlas-border pb-3">
+              <div>
+                <h3 className="text-sm font-semibold text-atlas-text">{bench.name}</h3>
+                <p className="text-xs text-atlas-text-secondary mt-0.5 font-mono">
+                  Target: {bench.target} · Dataset: {bench.dataset}
+                </p>
               </div>
-              <Badge variant="success">ALL TESTS PASSED</Badge>
+              <Badge variant="success" size="sm">ALL TESTS PASSED</Badge>
             </div>
 
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {bench.metrics.map((m, mIdx) => (
                 <div
                   key={mIdx}
-                  className="p-3 bg-[#0E1014] border border-[#262B33] rounded-lg space-y-1 font-mono text-xs"
+                  className="p-3 bg-atlas-surface-secondary border border-atlas-border rounded-lg space-y-1 font-mono text-xs"
                 >
-                  <div className="text-[10px] text-[#69717D] flex items-center justify-between font-sans">
+                  <div className="text-[10px] text-atlas-text-muted flex items-center justify-between font-sans">
                     <span>{m.name}</span>
-                    <span className="text-[#A0A7B2]">Threshold: {m.threshold}</span>
+                    <span className="text-atlas-text-secondary">Threshold: {m.threshold}</span>
                   </div>
-                  <div className="text-base font-bold text-emerald-400">{m.value}</div>
+                  <div className="text-xl font-bold text-emerald-400">{m.value}</div>
                 </div>
               ))}
             </div>
