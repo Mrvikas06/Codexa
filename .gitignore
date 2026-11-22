@@ -60,6 +60,8 @@ mlruns/
 *.db
 *.sqlite
 repos_storage/
+data/
+backend/data/
 
 # =========================
 # OS
